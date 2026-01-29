@@ -1,0 +1,164 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELED
+  SHIPPED
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELED
+}
+
+// User-related
+
+model User {
+  id              Int         @id @default(autoincrement())
+  name            String      
+  lastName        String
+  email           String      @unique
+  passwordHash    String
+  cpf             String      @unique
+  birthDate       DateTime    @db.Date
+  role            Role        @default(USER)
+  emailVerified   DateTime?
+  createdAt       DateTime    @default(now())
+
+  // relations
+  orders            Order[]
+  cart              Cart?
+  products          Product[]
+  checkoutSessions  CheckoutSession[]
+  addresses         Address[]
+  paymenthMethods   PaymentMethod[]
+}
+
+model Cart{
+  id              Int           @id @default(autoincrement())
+  updatedAt       DateTime      @default(now())
+
+  // relations
+  client          User          @relation(fields: [user_id], references: [id])
+  user_id         Int           @unique
+  cartItems       CartItem[]
+}
+
+model CartItem {
+  id              Int           @id @default(autoincrement())
+  quantity        Int           
+  unit_price      Decimal
+
+  // relations
+  cart            Cart          @relation(fields: [cart_id], references: [id])
+  cart_id         Int
+  product         Product       @relation(fields: [product_id], references: [id])
+  product_id      Int
+}
+
+model Address {
+  id              Int           @id @default(autoincrement())
+  street          String
+  number          String
+  city            String
+  state           String
+  zip_code        String
+  country         String
+  is_default      Boolean       @default(false)
+
+  // relations
+  client          User          @relation(fields: [user_id], references: [id])
+  user_id         Int           
+}
+
+model PaymentMethod {
+  id              Int           @id @default(autoincrement())
+  provider        String
+  last4           String
+  brand           String
+  token           String
+
+  // relations
+  client          User          @relation(fields: [user_id], references: [id])
+  user_id         Int           
+}
+
+// Product-related
+
+model Product {
+  id              Int         @id @default(autoincrement())
+  name            String      
+  description     String
+  image_url       String
+  price           Decimal
+  category        String
+  created_at      DateTime    @default(now())
+  active          Boolean
+
+  // relations
+  admin           User        @relation(fields: [created_by], references: [id])
+  created_by      Int
+  orderItems      OrderItem[]
+  cartItems       CartItem[]
+}
+
+model Order{
+  id            Int           @id @default(autoincrement())
+  status        OrderStatus       @default(PENDING)
+  total_gross   Decimal       
+  total_final   Decimal
+  orderedAt     DateTime      @default(now())
+
+  // relations
+  client        User          @relation(fields: [user_id], references: [id])
+  user_id       Int
+  orderItems    OrderItem[]
+}
+
+model OrderItem {
+  id            Int           @id @default(autoincrement())
+  quantity      Int
+  unit_price    Decimal
+
+  // relations
+  order         Order          @relation(fields: [order_id], references: [id])
+  order_id      Int 
+  product       Product        @relation(fields: [product_id], references: [id])
+  product_id    Int     
+}
+
+model CheckoutSession {
+  id            Int           @id @default(autoincrement())
+  status        SessionStatus @default(ACTIVE)
+  expires_at    DateTime      
+
+  // relations
+  user_id       Int
+  client        User          @relation(fields: [user_id], references: [id])
+}
+
+
+
+
+
