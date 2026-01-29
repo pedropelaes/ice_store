@@ -1,8 +1,9 @@
 import Credentials from "next-auth/providers/credentials"
+import { NextAuthOptions } from "next-auth"
 import prisma from "@/app/lib/prisma"
 import bcrypt from "bcrypt"
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     Credentials({
       name: "credentials",
@@ -37,5 +38,28 @@ export const authOptions = {
         }
       }
     })
-  ]
+  ],
+  session: {
+    strategy: "jwt"
+  },
+  callbacks: {
+    async jwt({token, user}){
+      if (user){
+        token.id = user.id;
+        token.role = user.role;
+      }
+      return token
+    },
+
+    async session({ session, token }) {
+      if (token && session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
+      }
+      return session;
+    },
+  },
+  pages: {
+    signIn: '/login',
+  }
 }
