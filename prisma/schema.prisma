@@ -55,6 +55,15 @@ model User {
   paymenthMethods   PaymentMethod[]
 }
 
+model VerificationToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+}
+
 model Cart{
   id              Int           @id @default(autoincrement())
   updatedAt       DateTime      @default(now())

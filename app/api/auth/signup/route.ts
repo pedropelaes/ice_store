@@ -2,6 +2,9 @@ import bcrypt from "bcrypt"
 import { NextResponse } from "next/server"
 import prisma from "@/app/lib/prisma"
 import { signupSchema } from "@/app/lib/validators/user"
+import { generateVerificationToken } from "@/app/lib/tokens"
+import { sendVerificationEmail } from "@/app/lib/validators/mail"
+import { success } from "zod"
 
 
 export async function POST(req: Request) {
@@ -49,10 +52,15 @@ export async function POST(req: Request) {
         }
     })
 
+    const verificationToken = await generateVerificationToken(user.email);
+
+    await sendVerificationEmail(
+        user.email, 
+        user.name || " ", 
+        verificationToken.token
+    );
+
     return NextResponse.json({
-        id: user.id,
-        email: user.email,
-        cpf: user.cpf,
-        birthDate: user.birthDate
+        success: "Conta criada! Verifique seu e-mail."
     })
 }
