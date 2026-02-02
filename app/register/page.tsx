@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { cpf as cpfValidator } from "cpf-cnpj-validator"
 import { z } from "zod"
+import { formatCPF, formatEmail, formatLettersOnly, formatNumbersOnly } from "../lib/formaters/formaters"
 
 export default function signUpPage(){
     const router = useRouter();
@@ -41,28 +42,7 @@ export default function signUpPage(){
         .join(' '); // 3. Junta tudo de volta com espaços
     };
 
-    const formatLettersOnly = (value: string) => {
-      return value.replace(/[^a-zA-ZÀ-ÿ\s]/g, "");
-    }
-
-    const formatNumbersOnly = (value: string) => {
-      return value.replace(/\D/g, "");
-    };
-
-    const formatCPF = (value: string) => {
-      const numbers = value.replace(/\D/g, ""); 
-      
-      return numbers
-        .slice(0, 11) 
-        .replace(/(\d{3})(\d)/, "$1.$2") 
-        .replace(/(\d{3})(\d)/, "$1.$2") 
-        .replace(/(\d{3})(\d{1,2})/, "$1-$2") 
-        .replace(/(-\d{2})\d+?$/, "$1"); 
-    };
-
-    const formatEmail = (value: string) =>{
-      return value.toLowerCase().replace(/\s/g, "");
-    }
+    
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -83,6 +63,7 @@ export default function signUpPage(){
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         let newValue = value;
+        setError("");
 
         if(name === "name" || name === "lastName"){
           newValue = formatLettersOnly(value);
