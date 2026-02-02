@@ -3,13 +3,18 @@
 import { SyntheticEvent, useState } from "react"
 import { formatEmail } from "../../lib/formaters/formaters";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function loginPage(){
+    const router = useRouter();
     const [formData, setFormData] = useState({ // estados para formularios
             email: "",
             password: "",
         })
     const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -27,8 +32,34 @@ export default function loginPage(){
         })
     }
 
+    const ERROR_MESSAGES: Record<string, string> = {
+        CredentialsSignin: "E-mail ou senha incorretos.",
+        EMAIL_NOT_VERIFIED: "Confirme seu e-mail antes de entrar.",
+    };
+
     const handleSubmit = async (e: SyntheticEvent) => {
-    
+        e.preventDefault();
+        setLoading(true);
+        setError("");
+
+        try{
+            const res = await signIn("credentials", {
+                redirect: false,
+                email: formData.email,
+                password: formData.password,
+            });
+
+            if(res?.error){
+                setError(ERROR_MESSAGES[res.error] ?? "Erro ao realizar login.");
+                setLoading(false);
+            }else{
+                router.push(`/`);
+                router.refresh();
+            }
+        }catch(error){
+            setError("Erro inesperado. Tente novamente.");
+            setLoading(false);
+        }
     }
 
     return (
@@ -78,14 +109,15 @@ export default function loginPage(){
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-xl">
                         <div className="flex flex-col">
                             <label className="mb-1 font-medium text-black">E-mail *</label>
-                            <input name="email" type="email" value = {formData.email} onChange={handleChange} placeholder="exemplo@gmail.com" className="input-custom" required />
+                            <input name="email" type="email" value = {formData.email} onChange={handleChange} placeholder="exemplo@gmail.com" 
+                            className={`input-custom ${error ? "border-red-500" : ""}`} required />
                         </div>
 
                         <div className="flex flex-col relative">
                             <label className="mb-1 font-medium text-black">Senha *</label>
                             <div className="relative">
                                 <input name="password" type={showPassword ? "text" : "password"} value={formData.password} 
-                                placeholder="Digite sua senha" onChange={handleChange} className="w-full p-3 rounded-xl outline-none transition-all border-2 input-custom w-full pr-10" required 
+                                placeholder="Digite sua senha" onChange={handleChange} className={`w-full p-3 rounded-xl outline-none transition-all border-2 input-custom w-full pr-10 ${error ? "border-red-500" : ""}`} required 
                                 />
                                 
                                 <button
@@ -106,9 +138,20 @@ export default function loginPage(){
                                 </button>
                             </div>
                         </div>
+
+                        {error && (
+                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm text-center">
+                                {error}
+                            </div>
+                        )}
+
                         <div className="flex gap-4 justify-center mt-2">
-                            <button type="submit" className="btn-primary">
-                                Entrar
+                            <button 
+                                type="submit" 
+                                disabled={loading}
+                                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {loading ? "Entrando..." : "Entrar"}
                             </button>
                         </div>
                     </form>
@@ -117,8 +160,8 @@ export default function loginPage(){
             </div>
 
             <div className="w-1/3 flex flex-col justify-center items-center bg-[#9CA3AF] text-white p-12 text-center">
-                <h2 className="text-3xl font-bold mb-4" >Ainda não possui <br /> conta?</h2>
-                <h3 className="mb-8">Faça o seu cadastro para <br /> aproveitar a nossa loja!</h3>
+                <h2 className="text-3xl font-bold mb-4" >Ainda não possui conta?</h2>
+                <h3 className="mb-8">Faça o seu cadastro para  aproveitar a nossa loja!</h3>
 
                 <Link 
                 href="/auth/register"

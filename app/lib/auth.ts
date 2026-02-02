@@ -2,46 +2,61 @@ import Credentials from "next-auth/providers/credentials"
 import { NextAuthOptions } from "next-auth"
 import prisma from "@/app/lib/prisma"
 import bcrypt from "bcrypt"
+import { z } from "zod"
+import { PrismaAdapter } from "@auth/prisma-adapter"
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6)
+});
 
 export const authOptions: NextAuthOptions = {
+  //adapter: PrismaAdapter(prisma),
+  session: {
+    strategy: "jwt"
+  },
+  pages: {
+    signIn: '/auth/login',
+    error: "/auth/login"
+  },
   providers: [
     Credentials({
       name: "credentials",
       credentials: {
-        email: {},
-        password: {}
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if(!credentials?.email || !credentials?.password)
-            return null
+        const parsedCredentials = loginSchema.safeParse(credentials);
+
+        if(!parsedCredentials.success) return null;
+
+        const { email, password } = parsedCredentials.data;
 
         const user = await prisma.user.findUnique({
-            where: { email: credentials.email }
+            where: { email: email }
         })
 
-        if(!user) return null
+        if(!user || !user.passwordHash) return null;
+
+        if(!user.emailVerified) throw new Error("EMAIL_NOT_VERIFIED");
 
         const valid = await bcrypt.compare(
-            credentials.password,
+            password,
             user.passwordHash
         )
 
-        if(!valid) return null
+        if(!valid) return null;
 
         return {
             id: user.id.toString(),
             email: user.email,
             name: user.name,
-            
-            role: user.role,
-            emailVerified: user.emailVerified
+            role: user.role || "USER",
         }
       }
     })
   ],
-  session: {
-    strategy: "jwt"
-  },
   callbacks: {
     async jwt({token, user}){
       if (user){
@@ -59,7 +74,5 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  pages: {
-    signIn: '/login',
-  }
+  secret: process.env.NEXTAUTH_SECRET,
 }

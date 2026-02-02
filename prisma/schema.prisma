@@ -39,7 +39,7 @@ model User {
   name            String      
   lastName        String
   email           String      @unique
-  passwordHash    String
+  passwordHash    String?
   cpf             String      @unique
   birthDate       DateTime    @db.Date
   role            Role        @default(USER)

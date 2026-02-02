@@ -28,6 +28,7 @@ export default function signUpPage(){
     })
 
     const [error, setError] = useState("")
+    const [loading, setLoading] = useState(false);
 
     /*const capitalizeFirstLetter = (value: string) => {
       return value.charAt(0).toUpperCase() + value.slice(1);
@@ -151,7 +152,7 @@ export default function signUpPage(){
         }
 
         const fullDate = `${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`;
-
+        setLoading(true);
         try{
             const res = await fetch("/api/auth/signup", {
                 method: "POST",
@@ -166,6 +167,7 @@ export default function signUpPage(){
 
             if(!res.ok){
                 const data = await res.json()
+                setLoading(false);
                 throw new Error(data.error || "Erro ao criar conta")
             }
 
@@ -176,12 +178,13 @@ export default function signUpPage(){
             if(signupData.emailSended === "false"){
               params.set("emailError", "true");
             }
-
+            
             router.push(`/auth/verify-request?${params.toString()}`)
             router.refresh()
             
 
         }catch(err: any){
+          setLoading(false);
           if(err.message === "Email exists"){
             setError("Já existe um usuário cadastrado com esse e-mail.");
           }else if(err.message === "CPF exists"){
@@ -359,8 +362,12 @@ export default function signUpPage(){
                       <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="w-5 h-5" viewBox="0 0 32 32"><path d="M32 15H3.41l8.29-8.29-1.41-1.42-10 10a1 1 0 0 0 0 1.41l10 10 1.41-1.41L3.41 17H32z" data-name="4-Arrow Left"/></svg>
                       Voltar
                     </button>
-                    <button type="submit" className="btn-primary">
-                        Cadastrar
+                    <button 
+                        type="submit" 
+                        disabled={loading}
+                        className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {loading ? "Cadastrando..." : "Cadastrar"}
                     </button>
                 </div>
                 </>
