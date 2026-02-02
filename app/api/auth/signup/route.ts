@@ -54,13 +54,14 @@ export async function POST(req: Request) {
 
     const verificationToken = await generateVerificationToken(user.email);
 
-    await sendVerificationEmail(
+    const sendEmailSuccess = await sendVerificationEmail(
         user.email, 
         user.name || " ", 
         verificationToken.token
     );
 
     return NextResponse.json({
-        success: "Conta criada! Verifique seu e-mail."
+        success: "Conta criada! Verifique seu e-mail.",
+        emailSended: sendEmailSuccess ? "true" : "false"
     })
 }

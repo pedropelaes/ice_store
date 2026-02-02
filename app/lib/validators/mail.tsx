@@ -7,11 +7,13 @@ const domain = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export const sendVerificationEmail = async (email: string, name: string, token: string) => {
   const confirmLink = `${domain}/auth/new-verification?token=${token}`;
-
+  const destinatario = process.env.NODE_ENV === 'development' 
+    ? 'pedropelaesdev@gmail.com' 
+    : email;
   try {
     const { data, error } = await resend.emails.send({
       from: 'Sua Loja <onboarding@resend.dev>', 
-      to: email,
+      to: destinatario,
       subject: 'Confirme seu e-mail - Sua Loja',
       react: <EmailTemplate name={name} confirmLink={confirmLink} />, 
     });

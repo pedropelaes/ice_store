@@ -5,7 +5,8 @@ import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { cpf as cpfValidator } from "cpf-cnpj-validator"
 import { z } from "zod"
-import { formatCPF, formatEmail, formatLettersOnly, formatNumbersOnly } from "../lib/formaters/formaters"
+import { formatCPF, formatEmail, formatLettersOnly, formatNumbersOnly } from "../../lib/formaters/formaters"
+import Link from "next/link"
 
 export default function signUpPage(){
     const router = useRouter();
@@ -161,26 +162,34 @@ export default function signUpPage(){
                 })
             })
 
+            const signupData = await res.json()
+
             if(!res.ok){
                 const data = await res.json()
                 throw new Error(data.error || "Erro ao criar conta")
             }
 
-            const loginRes = await signIn("credentials", {
-                redirect: false,
-                email: formData.email.trim(),
-                password: formData.password
-            })
+            const params = new URLSearchParams();
 
-            if(loginRes?.error){
-                setError("Conta criada, mas erro ao logar automaticamente.")
-            }else{
-                router.push("/")
-                router.refresh()
+            params.set("email", formData.email);
+
+            if(signupData.emailSended === "false"){
+              params.set("emailError", "true");
             }
 
+            router.push(`/auth/verify-request?${params.toString()}`)
+            router.refresh()
+            
+
         }catch(err: any){
-            setError(err.message)
+          if(err.message === "Email exists"){
+            setError("Já existe um usuário cadastrado com esse e-mail.");
+          }else if(err.message === "CPF exists"){
+            setError("Já existe um usuário cadastrado com esse CPF/CNPJ.");
+          }else{
+            console.log(err.message);
+            setError("Erro inesperado. Tente novamente. Caso persista, contate nosso suporte.")
+          }
         }
     }
 
@@ -345,7 +354,7 @@ export default function signUpPage(){
                     <button 
                       type="button" 
                       onClick={() => {setStep(1); setError("")}} 
-                      className="flex items-center gap-2 px-6 py-3 border-2 border-black rounded-full text-black font-medium hover:bg-gray-100 transition-all"
+                      className="btn-tertiary"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="w-5 h-5" viewBox="0 0 32 32"><path d="M32 15H3.41l8.29-8.29-1.41-1.42-10 10a1 1 0 0 0 0 1.41l10 10 1.41-1.41L3.41 17H32z" data-name="4-Arrow Left"/></svg>
                       Voltar
@@ -367,12 +376,12 @@ export default function signUpPage(){
         <h2 className="text-3xl font-bold mb-4" >Já possui uma conta?</h2>
         <h3 className="mb-8">Faça login e aproveite nossa loja!</h3>
 
-        <button 
+        <Link 
+          href="/auth/login"
           className="btn-secondary"
-          onClick={() => console.log("Ir para Login")}
         >
           Entrar
-        </button>
+        </Link>
       </div>
     </div>
   )

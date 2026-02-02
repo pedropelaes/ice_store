@@ -42,4 +42,7 @@ body {
   .btn-secondary {
     @apply bg-white text-black py-3 px-12 rounded-full hover:bg-gray-200 flex items-center gap-2 font-medium text-lg transition-all;
   }
+  .btn-tertiary{
+    @apply flex items-center gap-2 px-6 py-3 border-2 border-black rounded-full text-black font-medium hover:bg-gray-100 transition-all
+  }
 }

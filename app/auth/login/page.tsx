@@ -1,7 +1,8 @@
 "use client"
 
 import { SyntheticEvent, useState } from "react"
-import { formatEmail } from "../lib/formaters/formaters";
+import { formatEmail } from "../../lib/formaters/formaters";
+import Link from "next/link";
 
 export default function loginPage(){
     const [formData, setFormData] = useState({ // estados para formularios
@@ -119,12 +120,12 @@ export default function loginPage(){
                 <h2 className="text-3xl font-bold mb-4" >Ainda não possui <br /> conta?</h2>
                 <h3 className="mb-8">Faça o seu cadastro para <br /> aproveitar a nossa loja!</h3>
 
-                <button 
+                <Link 
+                href="/auth/register"
                 className="btn-secondary"
-                onClick={() => console.log("Ir para Login")}
                 >
                 Cadastrar
-                </button>
+                </Link>
             </div>
         </div>
     )
