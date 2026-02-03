@@ -32,6 +32,12 @@ enum SessionStatus {
   CANCELED
 }
 
+enum ProductStatus{
+  ACTIVE
+  PENDING
+  DEACTIVATED
+}
+
 // User-related
 
 model User {
@@ -121,15 +127,23 @@ model Product {
   description     String
   image_url       String
   price           Decimal
-  category        String
-  created_at      DateTime    @default(now())
-  active          Boolean
+  created_at      DateTime      @default(now())
+  active          ProductStatus @default(PENDING)
+  quantity        Int
 
   // relations
   admin           User        @relation(fields: [created_by], references: [id])
   created_by      Int
   orderItems      OrderItem[]
   cartItems       CartItem[]
+  category        Category[]
+}
+
+model Category{
+  id            Int           @id @default(autoincrement())
+  name          String        @unique
+  
+  products      Product[]
 }
 
 model Order{
