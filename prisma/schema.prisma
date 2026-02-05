@@ -32,7 +32,7 @@ enum SessionStatus {
   CANCELED
 }
 
-enum ProductStatus{
+enum ProductStatus {
   ACTIVE
   PENDING
   DEACTIVATED
