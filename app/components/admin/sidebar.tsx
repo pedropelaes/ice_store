@@ -1,6 +1,7 @@
 'use client'
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import LogoutButton from "../LogoutButton";
 
 const menuItems = [
   { name: "Dashboard", path: "/admin/dashboard" },
@@ -34,6 +35,9 @@ export default function Sidebar() {
           );
         })}
       </nav>
+      <div className="flex gap-4 justify-center mb-6">
+        <LogoutButton/>
+      </div>
     </aside>
   );
 }

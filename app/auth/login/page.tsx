@@ -51,6 +51,21 @@ export default function loginPage(){
 
             if(res?.error){
                 setError(ERROR_MESSAGES[res.error] ?? "Erro ao realizar login.");
+                if(res.error === "EMAIL_NOT_VERIFIED"){
+                    const res_resend = await fetch("/api/resend", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            email: formData.email
+                        })
+                    });
+
+                    if(!res_resend.ok){
+                        alert("Houve um erro ao enviar um e-mail de verificação, tente fazer login novamente.");
+                    }else{
+                        alert(`"Um novo e-mail de verificação foi enviado para: ${formData.email}`);
+                    }
+                }
                 setLoading(false);
             }else{
                 router.push(`/`);

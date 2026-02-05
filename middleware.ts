@@ -7,7 +7,7 @@ export default withAuth(
       req.nextUrl.pathname.startsWith("/admin") &&
       req.nextauth.token?.role !== "ADMIN"
     ) {
-      return NextResponse.rewrite(new URL("/", req.url))
+      return NextResponse.redirect(new URL("/unauthorized", req.url))
     }
   },
   {
@@ -20,5 +20,5 @@ export default withAuth(
 })
 
 export const config = {
-  matcher: ["/admin/:path*", "/checkout/:path*", "/profile/:path*", "/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/admin/:path*", "/checkout/:path*", "/profile/:path*", "/((?!api|_next/static|_next/image|auth|favicon.ico).*)"],
 }
