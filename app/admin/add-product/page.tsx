@@ -2,9 +2,14 @@
 
 import PasswordModal from "@/app/components/modals/PasswordModal";
 import { formatCurrency, formatNumbersOnly } from "@/app/lib/formaters/formaters";
-import { ArrowRight, ImageIcon, Plus, Trash2, UploadCloud } from "lucide-react";
+import { ArrowRight, ImageIcon, Plus, Trash2, UploadCloud, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { SyntheticEvent, useRef, useState } from "react";
+import { SyntheticEvent, useEffect, useRef, useState } from "react";
+
+interface CategoryOption {
+    id: number;
+    name: string;
+};
 
 export default function AddProductPage() {
     const router = useRouter();
@@ -19,9 +24,63 @@ export default function AddProductPage() {
         description: "",
         price: "",
         quantity: "",
-        category: "",
         image_url: ""
     })
+
+    const [dbCategories, setDbCategories] = useState<CategoryOption[]>([]); 
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]); 
+    const [categoryInput, setCategoryInput] = useState(""); 
+    const [showSuggestions, setShowSuggestions] = useState(false);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+        try {
+            const res = await fetch("/api/products/categories/get-all");
+            if (res.ok) {
+            const data = await res.json();
+            setDbCategories(data);
+            }
+        } catch (error) {
+            console.error("Erro ao buscar categorias", error);
+        }
+        };
+        fetchCategories();
+    }, []);
+
+    const handleAddCategory = (categoryName: string) => {
+        const trimmedName = categoryName.trim();
+        if (!trimmedName) return;
+
+        const formattedName = trimmedName.charAt(0).toUpperCase() + trimmedName.slice(1); // capitaliza primeira letra
+
+        
+        if (!selectedCategories.includes(formattedName)) {  // evita categorias duplicadas
+            setSelectedCategories([...selectedCategories, formattedName]);
+        }
+        
+        setCategoryInput("");
+        setShowSuggestions(false);
+    };
+
+    const handleRemoveCategory = (categoryName: string) => {
+        setSelectedCategories(selectedCategories.filter((c) => c !== categoryName));
+    };
+
+    const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            e.preventDefault(); // Não envia o form
+            handleAddCategory(categoryInput);
+        } else if (e.key === "Backspace" && !categoryInput && selectedCategories.length > 0) {
+            // Se apagar com input vazio, remove a última tag (UX nativa)
+            handleRemoveCategory(selectedCategories[selectedCategories.length - 1]);
+        }
+    };
+
+    const filteredSuggestions = dbCategories.filter(
+        (cat) =>
+        cat.name.toLowerCase().includes(categoryInput.toLowerCase()) &&
+        !selectedCategories.includes(cat.name)
+    );
 
     const [imageFile, setImageFile] = useState<File | null>(null); 
     const [imagePreview, setImagePreview] = useState<string>(""); 
@@ -103,7 +162,7 @@ export default function AddProductPage() {
         if (!formData.price || priceNumber <= 0) return "O preço deve ser maior que zero.";
         
         if (!formData.quantity) return "A quantidade é obrigatória.";
-        if (!formData.category.trim()) return "A categoria é obrigatória.";
+        if (selectedCategories.length === 0) return "Selecione pelo menos uma categoria.";
 
         if(!formData.image_url && !imageFile) return "A imagem do produto é obrigatoria."
         
@@ -153,6 +212,7 @@ export default function AddProductPage() {
 
             const payload = {
                 ...formData,
+                category: selectedCategories.join(", "),
                 price: priceClean,               
                 quantity: Number(formData.quantity), 
                 image_url: finalImageUrl,
@@ -289,13 +349,67 @@ export default function AddProductPage() {
                         </div>
                     </div>
 
-                    <div className="flex flex-col">
-                        <label className="mb-1 font-medium text-black">Categoria *</label>
-                        <input name="category" value={formData.category} onChange={handleChange}
-                        type="text" className="input-custom w-full" placeholder="Ex: Uma camisa estilosa..."></input>
+                    <div className="flex flex-col relative">
+                    <label className="mb-1 font-medium text-black">Categoria *</label>
+                    
+                    <div className="input-custom w-full min-h-[42px] flex flex-wrap gap-2 items-center p-2 bg-white">
+
+                        {selectedCategories.map((cat) => (
+                            <span key={cat} className="bg-gray-200 text-black px-2 py-1 rounded-md text-sm flex items-center gap-1">
+                                {cat}
+                                <button onClick={() => handleRemoveCategory(cat)} className="hover:text-red-500">
+                                    <X size={14} />
+                                </button>
+                            </span>
+                        ))}
+
+                        <input 
+                            type="text" 
+                            className="outline-none flex-1 bg-transparent min-w-[120px]" 
+                            placeholder={selectedCategories.length === 0 ? "Selecione ou digite..." : ""}
+                            value={categoryInput}
+                            onChange={(e) => {
+                                setCategoryInput(e.target.value);
+                                setShowSuggestions(true);
+                            }}
+                            onFocus={() => setShowSuggestions(true)}
+                            onKeyDown={handleCategoryKeyDown}
+                        />
                     </div>
+
+                    {showSuggestions && (
+                        <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 z-10 max-h-48 overflow-y-auto">
+                            {filteredSuggestions.length > 0 ? (
+                                filteredSuggestions.map((cat) => (
+                                    <div 
+                                        key={cat.id} 
+                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center"
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => handleAddCategory(cat.name)}
+                                    >
+                                        <span className="text-black">{cat.name}</span>
+                                    </div>
+                                ))
+                            ) : categoryInput.trim().length > 0 ? (
+                                <div 
+                                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-blue-600 font-medium"
+                                    onClick={() => handleAddCategory(categoryInput)}
+                                >
+                                    Criar "{categoryInput}"
+                                </div>
+                            ) :
+                                <div className="px-4 py-2 text-gray-400 text-sm">
+                                    Nenhuma categoria encontrada.
+                                </div> 
+                            }
+                        </div>
+                    )}
+                    {showSuggestions && (
+                        <div className="fixed inset-0 z-0" onClick={() => setShowSuggestions(false)}></div>
+                    )}
                 </div>
             </div>
+        </div>
             <div className="flex flex justify-center mt-8 mb-2">
                 <button className="btn-primary" onClick={handleInitialSubmit}>
                     Criar produto
