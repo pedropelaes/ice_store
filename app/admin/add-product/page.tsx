@@ -6,7 +6,7 @@ import { ArrowRight, ImageIcon, Plus, Trash2, UploadCloud, X } from "lucide-reac
 import { useRouter } from "next/navigation";
 import { SyntheticEvent, useEffect, useRef, useState } from "react";
 
-interface CategoryOption {
+export interface CategoryOption {
     id: number;
     name: string;
 };
