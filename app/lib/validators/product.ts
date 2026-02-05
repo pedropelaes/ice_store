@@ -9,6 +9,10 @@ export const productSchema = z.object({
     description: z
         .string()
         .min(1, "Description too short"),
+
+    category: z
+        .string()
+        .min(1, "Category too short"),
     
     price: z
         .string().refine((val) => !isNaN(Number(val)), {

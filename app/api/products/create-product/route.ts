@@ -14,9 +14,9 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        const { password: passwordConfirm, ...productData } = body;
+        const { password: password, ...productData } = body;
 
-        if (!passwordConfirm) {
+        if (!password) {
             return NextResponse.json({ message: "Password is required" }, { status: 400 });
         }
         
@@ -29,7 +29,6 @@ export async function POST(req: Request) {
             )
         }
 
-        
         const adminId = Number(session.user.id);
 
         if(isNaN(adminId)){
@@ -38,7 +37,7 @@ export async function POST(req: Request) {
 
         const admin = await prisma.user.findUnique({
             where: {id: adminId}
-        })
+        });
 
         if (!admin) {
             return NextResponse.json({ message: "User not found" }, { status: 404 });
@@ -51,19 +50,32 @@ export async function POST(req: Request) {
             );
         }
 
-        const isPasswordValid = await bcrypt.compare(passwordConfirm, admin.passwordHash);
+        const isPasswordValid = await bcrypt.compare(password, admin.passwordHash);
 
 
         if (!isPasswordValid) {
             return NextResponse.json({ message: "Wrong password" }, { status: 403 });
         }
 
+        const { category, ...productInfo } = parsed.data;
+
+        const categoryList = category
+            .split(',')
+            .map((c) => c.trim())
+            .filter((c) => c.length > 0);
+
         const newProduct = await prisma.product.create({
             data: {
-                ...parsed.data,
-                created_by: adminId
-            }
-        })
+                ...productInfo, 
+                created_by: adminId,
+                category: {
+                    connectOrCreate: categoryList.map((catName) => ({
+                        where: { name: catName },
+                        create: { name: catName },
+                    })),
+                },
+            },
+        });
 
         return NextResponse.json(newProduct, {status: 201})
 

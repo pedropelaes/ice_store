@@ -4,7 +4,6 @@ import prisma from "@/app/lib/prisma"
 import { signupSchema } from "@/app/lib/validators/user"
 import { generateVerificationToken } from "@/app/lib/tokens"
 import { sendVerificationEmail } from "@/app/lib/validators/mail"
-import { success } from "zod"
 
 
 export async function POST(req: Request) {

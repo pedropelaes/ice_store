@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { cpf as cpfValidator } from "cpf-cnpj-validator"
 import { z } from "zod"
-import { formatCPF, formatEmail, formatLettersOnly, formatNumbersOnly } from "../../lib/formaters/formaters"
+import { capitalizeWords, formatCPF, formatEmail, formatLettersOnly, formatNumbersOnly } from "../../lib/formaters/formaters"
 import Link from "next/link"
 
 export default function signUpPage(){
@@ -34,17 +34,6 @@ export default function signUpPage(){
       return value.charAt(0).toUpperCase() + value.slice(1);
     };*/
 
-    const capitalizeWords = (value: string) => {
-      return value
-        .split(' ') // 1. Vira lista: ['silva', 'da', 'costa']
-        .map(word => {
-            // 2. Capitaliza a primeira letra de cada item da lista
-            return word.charAt(0).toUpperCase() + word.slice(1);
-        })
-        .join(' '); // 3. Junta tudo de volta com espaços
-    };
-
-    
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
