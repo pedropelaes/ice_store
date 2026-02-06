@@ -1,11 +1,12 @@
 "use client"
 
-import { FileInput, Plus, Search, Calendar, CircleDashed, Tag, ChevronDown, Circle, ArrowUpDown, ArrowUp, ArrowDown, X} from "lucide-react";
+import { FileInput, Plus, Search, Calendar, CircleDashed, Tag, ChevronDown, Circle, ArrowUpDown, ArrowUp, ArrowDown, X, ChevronLeft, ChevronRight} from "lucide-react";
 import { CategoryOption } from "../../add-product/page";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 interface Product {
     id: number;
@@ -21,7 +22,7 @@ interface Product {
 }
 
 
-async function getProducts(search: string, sort: string, order: string, category: string, status: string, date: string) {
+async function getProducts(search: string, sort: string, order: string, category: string, status: string, date: string, page: number) {
     const params = new URLSearchParams();
     if (search) params.append("search", search);
     if(category) params.append("category", category);
@@ -30,6 +31,9 @@ async function getProducts(search: string, sort: string, order: string, category
 
     params.append("sort", sort);
     params.append("order", order);
+
+    params.append("page", page.toString());
+    params.append("limit", "20");
 
     const url = `/api/products/get-all?${params.toString()}`;
     const res = await fetch(url);
@@ -68,17 +72,19 @@ export default function ProductsPage() {
 
     const [search, setSearch] = useState("");
     const [sortConfig, setSortConfig] = useState({ field: "created_at", order: "desc" });
+    const debouncedSearch = useDebounce(search, 500);
 
     const [filterCategory, setFilterCategory] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
     const [filterDate, setFilterDate] = useState("");
+    const [page, setPage] = useState(1);
 
     const [activeDropdown, setActiveDropdown] = useState<null | 'status' | 'category'>(null);
 
     // products query
     const { data: products, isLoading: isLoadingProducts, isError: isErrorProducts } = useQuery({
-        queryKey: ['products', search, sortConfig, filterCategory, filterStatus, filterDate], // search change = fetch again
-        queryFn: () => getProducts(search, sortConfig.field, sortConfig.order, filterCategory, filterStatus, filterDate),
+        queryKey: ['products', debouncedSearch, sortConfig, filterCategory, filterStatus, filterDate], // search change = fetch again
+        queryFn: () => getProducts(search, sortConfig.field, sortConfig.order, filterCategory, filterStatus, filterDate, page),
     });
 
     // categories query
@@ -120,6 +126,10 @@ export default function ProductsPage() {
     
     const dateInputRef = useRef<HTMLInputElement>(null);
 
+    const totalItems = products?.meta?.total || 0;
+    const itemsPerPage = products?.meta?.limit || 20;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6" onClick={() => setActiveDropdown(null)}>
@@ -146,7 +156,7 @@ export default function ProductsPage() {
                 <div className="relative w-full md:w-auto">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black"></Search>
                     <input type="search" className="input-custom pl-10 placeholder-black/70" placeholder="Pesquisar"
-                    value={search} onChange={(e) => setSearch(e.target.value)}
+                    value={search} onChange={(e) => {setSearch(e.target.value); setPage(1);}}
                     ></input>
                 </div>
 
@@ -170,7 +180,7 @@ export default function ProductsPage() {
                             type="date" 
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             value={filterDate}
-                            onChange={(e) => setFilterDate(e.target.value)}
+                            onChange={(e) => {setFilterDate(e.target.value); setPage(1)}}
                         />
 
                         {filterDate && (
@@ -191,7 +201,7 @@ export default function ProductsPage() {
                             <CircleDashed size={16} />
                             <span>{filterStatus ? STATUS_MAP[filterStatus]?.label : "Status"}</span>
                             {filterStatus ? (
-                                <div onClick={(e) => { e.stopPropagation(); setFilterStatus(""); }} className="hover:text-red-500"><X size={14} /></div>
+                                <div onClick={(e) => { e.stopPropagation(); setFilterStatus(""); setPage(1);}} className="hover:text-red-500"><X size={14} /></div>
                             ) : (
                                 <ChevronDown size={14} className="text-black" />
                             )}
@@ -203,7 +213,7 @@ export default function ProductsPage() {
                                     <div 
                                         key={key}
                                         className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm flex items-center gap-2"
-                                        onClick={() => { setFilterStatus(key); setActiveDropdown(null); }}
+                                        onClick={() => { setFilterStatus(key); setActiveDropdown(null); setPage(1);}}
                                     >
                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_MAP[key].bg}}></div>
                                         {STATUS_MAP[key].label}
@@ -356,6 +366,34 @@ export default function ProductsPage() {
                     </table>
                 )}
             </div>
+
+                {!isLoadingProducts && !isErrorProducts && (
+                 <div className="flex items-center justify-between mt-4 border-t border-gray-300 pt-4">
+                    <span className="text-sm text-gray-500">
+                        Mostrando página <strong>{page}</strong> de <strong>{totalPages || 1}</strong> 
+                        <span className="ml-2">({totalItems} produtos)</span>
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => setPage(old => Math.max(old - 1, 1))}
+                            disabled={page === 1}
+                            className="p-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        
+                        <button 
+                            onClick={() => setPage(old => (old < totalPages ? old + 1 : old))}
+                            disabled={page >= totalPages}
+                            className="p-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                 </div>
+             )}
+                
             </div>
         </div>
     )
