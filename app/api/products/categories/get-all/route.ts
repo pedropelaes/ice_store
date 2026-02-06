@@ -1,9 +1,15 @@
 import prisma from "@/app/lib/prisma";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req: Request) {
     try{
+        const { searchParams } = new URL(req.url);
+        const limitParam = searchParams.get("limit");
+
+        const take = limitParam ? parseInt(limitParam) : undefined;
+
         const categories = await prisma.category.findMany({
+            take: take,
             orderBy: {
                 products: {
                     _count: 'desc'
