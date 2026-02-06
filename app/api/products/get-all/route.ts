@@ -12,6 +12,8 @@ export async function GET(req: Request) {
 
         const search = searchParams.get("search");
         const category = searchParams.get("category");
+        const status = searchParams.get("status");
+        const date = searchParams.get("date");
         
         const sortField = searchParams.get("sort") || "created_at"; 
         const sortOrder = searchParams.get("order") || "desc"; 
@@ -40,13 +42,42 @@ export async function GET(req: Request) {
             });
         }
 
+        if(status) {
+            filters.push({ active: status.toUpperCase() as any });
+        }
+
+        if(date){
+            console.log(date);
+            const startOfDay = new Date(`${date}T00:00:00.000Z`);
+            const endOfDay = new Date(`${date}T23:59:59.999Z`);
+
+            filters.push({
+                created_at: {
+                    gte: startOfDay, // Maior ou igual ao inicio do dia
+                    lte: endOfDay    // Menor ou igual ao fim do dia
+                }
+            });
+        }
+
         const whereCondition: Prisma.ProductWhereInput = filters.length > 0 ? { AND: filters } : {};
 
         const validOrder = sortOrder === 'asc' ? 'asc' : 'desc';
         
-        const orderByCondition = {
-            [sortField]: validOrder 
-        };
+        let orderByCondition: any = {};
+
+        switch (sortField) {
+            case 'created_by':
+                orderByCondition = { admin: { name: validOrder } };
+                break;
+            
+            case 'category':
+                orderByCondition = { category: { _count: validOrder } }; // N:N -> order by quantity
+                break;
+
+            default:
+                orderByCondition = { [sortField]: validOrder };
+                break;
+        }
 
         const products = await prisma.product.findMany({
             where: whereCondition,

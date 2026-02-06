@@ -1,9 +1,9 @@
 "use client"
 
-import { FileInput, Plus, Search, Calendar, CircleDashed, Tag, ChevronDown, Circle} from "lucide-react";
+import { FileInput, Plus, Search, Calendar, CircleDashed, Tag, ChevronDown, Circle, ArrowUpDown, ArrowUp, ArrowDown, X} from "lucide-react";
 import { CategoryOption } from "../../add-product/page";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
@@ -21,8 +21,17 @@ interface Product {
 }
 
 
-async function getProducts(filters?: string) {
-    const url = `/api/products/get-all${filters ? `?${filters}` : ''}`;
+async function getProducts(search: string, sort: string, order: string, category: string, status: string, date: string) {
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if(category) params.append("category", category);
+    if(status) params.append("status", status);
+    if(date) params.append("date", date);
+
+    params.append("sort", sort);
+    params.append("order", order);
+
+    const url = `/api/products/get-all?${params.toString()}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Erro ao buscar produtos");
     return res.json();
@@ -55,17 +64,21 @@ const STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = 
 };
 
 export default function ProductsPage() {
-    const todayDate = new Date();
     const [error, setError] = useState("");
 
     const [search, setSearch] = useState("");
+    const [sortConfig, setSortConfig] = useState({ field: "created_at", order: "desc" });
 
-    
+    const [filterCategory, setFilterCategory] = useState("");
+    const [filterStatus, setFilterStatus] = useState("");
+    const [filterDate, setFilterDate] = useState("");
+
+    const [activeDropdown, setActiveDropdown] = useState<null | 'status' | 'category'>(null);
 
     // products query
     const { data: products, isLoading: isLoadingProducts, isError: isErrorProducts } = useQuery({
-        queryKey: ['products', search], // search change = fetch again
-        queryFn: () => getProducts(search ? `search=${search}` : ''),
+        queryKey: ['products', search, sortConfig, filterCategory, filterStatus, filterDate], // search change = fetch again
+        queryFn: () => getProducts(search, sortConfig.field, sortConfig.order, filterCategory, filterStatus, filterDate),
     });
 
     // categories query
@@ -73,10 +86,43 @@ export default function ProductsPage() {
         queryKey: ['categories'],
         queryFn: getCategories
     });
+
+    const handleSort = (field: string) => {
+        setSortConfig((current) => {
+            if(current.field === field){
+                return{
+                    field,
+                    order: current.order === "asc" ? "desc" : "asc"
+                };
+            }
+            return {field, order: "asc"}
+        })
+    }
+
+    const renderSortIcon = (field: string) => {
+        if(sortConfig.field !== field){
+            return <ArrowUpDown size={14} className="text-gray-400 opacity-50 group-hover:opacity-100" />;
+        }
+        if (sortConfig.order === "asc") return <ArrowUp size={14} className="text-black" />;
+        return <ArrowDown size={14} className="text-black" />;
+    }
+
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setActiveDropdown(null);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
     
+    const dateInputRef = useRef<HTMLInputElement>(null);
+
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6" onClick={() => setActiveDropdown(null)}>
                 <h1 className="text-xl font-bold text-black">Lista de produtos</h1>
                 
                 <div className="flex gap-3">
@@ -94,7 +140,7 @@ export default function ProductsPage() {
                 </div>
                 
             </div>
-            <div className="w-full bg-[#D9D9D9] rounded-xl shadow-sm p-6">
+            <div className="w-full bg-[#D9D9D9] rounded-xl shadow-sm p-6" >
                 <div className="flex flex-col md:flex-row justify-between items-center p-2 rounded-lg mb-6 gap-4">
                 
                 <div className="relative w-full md:w-auto">
@@ -104,23 +150,97 @@ export default function ProductsPage() {
                     ></input>
                 </div>
 
-                <div className="flex gap-2 w-full md:w-auto overflow-x-auto no-scrollbar">
-                    <button className="flex items-center border-1 border-black gap-2 bg-white px-3 py-2 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 whitespace-nowrap">
-                        <Calendar size={16} />
-                        <span>{todayDate.toLocaleDateString()}</span>
-                    </button>
+                <div className="flex gap-2 w-full md:w-auto flex-wrap no-scrollbar">
 
-                    <button className="flex items-center border-1 border-black gap-2 bg-white px-3 py-2 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 whitespace-nowrap">
-                        <CircleDashed size={16} />
-                        <span>Status</span>
-                        <ChevronDown size={14} className="text-black" />
-                    </button>
+                    <div className="relative bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => {dateInputRef.current?.showPicker()}}
+                    >
+                        <div className={`flex items-center gap-2 pl-3 py-2 text-sm font-medium text-gray-700 ${filterDate ? 'text-black pr-8' : 'pr-3'}`}>
+                            <Calendar size={16} />
+                            <span>
+                                {filterDate 
+                                    // Adicionei 'UTC' aqui para garantir que o front mostre a mesma data que enviou pro back
+                                    ? new Date(filterDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) 
+                                    : "Selecione uma data"}
+                            </span>
+                        </div>
 
-                    <button className="flex items-center border-1 border-black gap-2 bg-white px-3 py-2 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 whitespace-nowrap">
-                        <Tag size={16} />
-                        <span>Categoria</span>
-                        <ChevronDown size={14} className="text-black" />
-                    </button>
+                        <input 
+                            ref={dateInputRef}
+                            type="date" 
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            value={filterDate}
+                            onChange={(e) => setFilterDate(e.target.value)}
+                        />
+
+                        {filterDate && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); setFilterDate(""); }} 
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 hover:text-red-700 z-20 bg-white rounded-full p-0.5"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="relative">
+                        <button 
+                            className={`flex items-center gap-2 bg-white px-3 py-2 rounded-lg text-sm font-medium text-black shadow-sm border hover:bg-gray-50 ${filterStatus ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+                            onClick={() => setActiveDropdown(activeDropdown === 'status' ? null : 'status')}
+                        >
+                            <CircleDashed size={16} />
+                            <span>{filterStatus ? STATUS_MAP[filterStatus]?.label : "Status"}</span>
+                            {filterStatus ? (
+                                <div onClick={(e) => { e.stopPropagation(); setFilterStatus(""); }} className="hover:text-red-500"><X size={14} /></div>
+                            ) : (
+                                <ChevronDown size={14} className="text-black" />
+                            )}
+                        </button>
+
+                        {activeDropdown === 'status' && (
+                            <div className="absolute top-full mt-2 left-0 bg-white border border-gray-200 rounded-lg shadow-xl z-20 min-w-[150px] overflow-hidden text-black">
+                                {Object.keys(STATUS_MAP).map((key) => (
+                                    <div 
+                                        key={key}
+                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm flex items-center gap-2"
+                                        onClick={() => { setFilterStatus(key); setActiveDropdown(null); }}
+                                    >
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_MAP[key].bg}}></div>
+                                        {STATUS_MAP[key].label}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="relative">
+                        <button 
+                            className={`flex items-center gap-2 bg-white px-3 py-2 rounded-lg text-sm font-medium text-black shadow-sm border hover:bg-gray-50 ${filterCategory ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+                            onClick={() => setActiveDropdown(activeDropdown === 'category' ? null : 'category')}
+                        >
+                            <Tag size={16} />
+                            <span>{filterCategory || "Categoria"}</span>
+                            {filterCategory ? (
+                                <div onClick={(e) => { e.stopPropagation(); setFilterCategory(""); }} className="hover:text-red-500 "><X size={14} /></div>
+                            ) : (
+                                <ChevronDown size={14} className="text-black" />
+                            )}
+                        </button>
+
+                        {activeDropdown === 'category' && (
+                            <div className="absolute top-full mt-2 right-0 md:left-0 bg-white border border-gray-200 rounded-lg shadow-xl z-20 min-w-[180px] max-h-60 overflow-y-auto text-black">
+                                {categories?.map((cat: CategoryOption) => (
+                                    <div 
+                                        key={cat.id}
+                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                        onClick={() => { setFilterCategory(cat.name); setActiveDropdown(null); }}
+                                    >
+                                        {cat.name}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -135,12 +255,57 @@ export default function ProductsPage() {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="text-black text-sm border-b border-gray-200 bg-white">
-                                <th className="p-3 font-medium">Nome do produto</th>
-                                <th className="p-3 font-medium">Categoria</th>
-                                <th className="p-3 font-medium">Preço</th>
-                                <th className="p-3 font-medium">Estoque</th>
-                                <th className="p-3 font-medium">Criado por</th>
-                                <th className="p-3 font-medium">Status</th>
+                                <th className="table-clickable-header group"
+                                    onClick={() => handleSort("name")}
+                                >
+                                    <div className="flex items-center gap-2 ">
+                                        Nome do produto
+                                        {renderSortIcon("name")}
+                                    </div>
+                                </th>
+                                <th className="table-clickable-header group"
+                                    onClick={() => handleSort("category")}
+                                >
+                                    <div className="flex items-center gap-2 ">
+                                        Categoria
+                                        {renderSortIcon("category")}
+                                    </div>
+                                </th>
+                                <th className= "table-clickable-header group"
+                                    onClick={() => handleSort("price")}
+                                >
+                                    <div className="flex items-center gap-2 ">
+                                        Preço
+                                        {renderSortIcon("price")}
+                                    </div>
+                                </th>
+                                <th className="table-clickable-header group"
+                                    onClick={() => handleSort("quantity")}
+                                >
+                                    <div className="flex items-center gap-2 ">
+                                        Estoque
+                                        {renderSortIcon("quantity")}
+                                    </div>
+                                </th>
+                                <th className="table-clickable-header group" onClick={() => handleSort("created_at")}>
+                                    <div className="flex items-center gap-2">Criado em {renderSortIcon("created_at")}</div>
+                                </th>
+                                <th className="table-clickable-header group"
+                                    onClick={() => handleSort("created_by")}
+                                >
+                                    <div className="flex items-center gap-2 ">
+                                        Criado por
+                                        {renderSortIcon("created_by")}
+                                    </div>
+                                </th>
+                                <th className="table-clickable-header group"
+                                    onClick={() => handleSort("active")}
+                                >
+                                    <div className="flex items-center gap-2 ">
+                                        Status
+                                        {renderSortIcon("active")}
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="text-black text-sm">
@@ -167,6 +332,12 @@ export default function ProductsPage() {
                                     </td>
                                     <td className="p-3">R$ {Number(prod.price).toFixed(2)}</td>
                                     <td className="p-3">{prod.quantity}</td>
+                                    <td className="p-3">
+                                            {new Date(prod.created_at).toLocaleDateString('pt-BR')} 
+                                            <span className="text-gray-400 text-xs block">
+                                                {new Date(prod.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+                                            </span>
+                                        </td>
                                     <td className="p-3">{prod.admin?.name || "Admin"}</td>
                                     <td className="p-3">
                                         <span className="text-green-700 px-2 py-1 rounded text-xs font-bold"
