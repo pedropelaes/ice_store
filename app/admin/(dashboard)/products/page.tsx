@@ -316,6 +316,12 @@ export default function ProductsPage() {
                                         {renderSortIcon("active")}
                                     </div>
                                 </th>
+                                <th className="table-clickable-header group" onClick={() => handleSort("description")}>
+                                    <div className="flex items-center gap-2 ">
+                                        Descrição
+                                        {renderSortIcon("description")}
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="text-black text-sm">
@@ -358,6 +364,9 @@ export default function ProductsPage() {
                                         >
                                             {statusConfig.label}
                                         </span>
+                                    </td>
+                                    <td className="p-3">
+                                        {prod.description}
                                     </td>
                                 </tr>
                                 )
