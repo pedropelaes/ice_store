@@ -11,6 +11,8 @@ import { EditableCell } from "@/app/components/admin/EditableCell";
 import { AdminPageHeader } from "@/app/components/admin/AdminPageHeader";
 import { AdminToolbar } from "@/app/components/admin/AdminToolBar";
 import { DateFilter } from "@/app/components/admin/DateFilter";
+import { useAdminTable } from "@/app/hooks/useAdminTableSort";
+import { useClickOutside } from "@/app/hooks/useClickOutside";
 
 interface Product {
     id: number;
@@ -72,23 +74,23 @@ const STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = 
 export default function ProductsPage() {
     const queryClient = useQueryClient();
 
-    const [search, setSearch] = useState("");
-    const [sortConfig, setSortConfig] = useState({ field: "created_at", order: "desc" });
-    const debouncedSearch = useDebounce(search, 500);
+    const table = useAdminTable({ initialSortField: "created_at" });
+
+    const statusDropdown = useClickOutside<HTMLDivElement>();
+    const categoryDropdown = useClickOutside<HTMLDivElement>();
 
     const [filterCategory, setFilterCategory] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
     const [filterDate, setFilterDate] = useState("");
-    const [page, setPage] = useState(1);
 
-    const [activeDropdown, setActiveDropdown] = useState<null | 'status' | 'category'>(null);
 
     const [pendingUpdates, setPendingUpdates] = useState<Record<number, Partial<Product>>>({});
+    const hasChanges = Object.keys(pendingUpdates).length > 0;
 
     // products query
     const { data: products, isLoading: isLoadingProducts, isError: isErrorProducts } = useQuery({
-        queryKey: ['products', debouncedSearch, sortConfig, filterCategory, filterStatus, filterDate], // search change = fetch again
-        queryFn: () => getProducts(search, sortConfig.field, sortConfig.order, filterCategory, filterStatus, filterDate, page),
+        queryKey: ['products', table.debouncedSearch, table.sortConfig, filterCategory, filterStatus, filterDate],
+        queryFn: () => getProducts(table.search, table.sortConfig.field, table.sortConfig.order, filterCategory, filterStatus, filterDate, table.page),
     });
 
     // categories query
@@ -96,40 +98,7 @@ export default function ProductsPage() {
         queryKey: ['categories'],
         queryFn: getCategories
     });
-
-    const handleSort = (field: string) => {
-        setSortConfig((current) => {
-            if(current.field === field){
-                return{
-                    field,
-                    order: current.order === "asc" ? "desc" : "asc"
-                };
-            }
-            return {field, order: "asc"}
-        })
-    }
-
-    const renderSortIcon = (field: string) => {
-        if(sortConfig.field !== field){
-            return <ArrowUpDown size={14} className="text-gray-400 opacity-50 group-hover:opacity-100" />;
-        }
-        if (sortConfig.order === "asc") return <ArrowUp size={14} className="text-black" />;
-        return <ArrowDown size={14} className="text-black" />;
-    }
-
-    const dropdownRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setActiveDropdown(null);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
     
-    const dateInputRef = useRef<HTMLInputElement>(null);
-
     const areArraysEqual = (arr1: any[], arr2: any[]) => {
         if (!Array.isArray(arr1) || !Array.isArray(arr2)) return arr1 === arr2;
         if (arr1.length !== arr2.length) return false;
@@ -215,14 +184,14 @@ export default function ProductsPage() {
         saveChanges(pendingUpdates);
     };
 
-    const hasChanges = Object.keys(pendingUpdates).length > 0;
+    
 
     const totalItems = products?.meta?.total || 0;
     const itemsPerPage = products?.meta?.limit || 20;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
     return (
-        <div className="w-full" onClick={() => setActiveDropdown(null)} >
+        <div className="w-full">
             
             <AdminPageHeader title="Lista de produtos">
                 <button className="btn-tertiary">
@@ -238,7 +207,7 @@ export default function ProductsPage() {
                 
             
             <div className="w-full bg-[#D9D9D9] rounded-xl shadow-sm p-6" >
-                <AdminToolbar searchValue={search} onSearchChange={(val) => { setSearch(val); setPage(1); }}>
+                <AdminToolbar searchValue={table.search} onSearchChange={(val) => { table.setSearch(val); table.setPage(1); }}>
                     
                     <button
                         onClick={(e) => { e.stopPropagation(); handleSaveChanges(); }}
@@ -263,21 +232,21 @@ export default function ProductsPage() {
 
                     <div className="w-px h-8 bg-gray-300 mx-1 hidden md:block"></div>
 
-                    <DateFilter date={filterDate} setDate={setFilterDate} />
+                    <DateFilter date={filterDate} setDate={(val) => { setFilterDate(val); table.setPage(1); }} />
                     
-                     <div className="relative">
+                     <div className="relative" ref={statusDropdown.ref}>
                         <button 
                             className={`flex items-center gap-2 bg-white px-3 h-10 rounded-lg text-sm font-medium text-black shadow-sm border hover:bg-gray-50 ${filterStatus ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'status' ? null : 'status')}}
+                            onClick={() => statusDropdown.setIsOpen(!statusDropdown.isOpen)}
                         >
                             <CircleDashed size={16} />
                             <span>{filterStatus ? STATUS_MAP[filterStatus]?.label : "Status"}</span>
-                            {filterStatus ? <div onClick={(e) => { e.stopPropagation(); setFilterStatus(""); setPage(1);}}><X size={14} /></div> : <ChevronDown size={14} />}
+                            {filterStatus ? <div onClick={(e) => { e.stopPropagation(); setFilterStatus(""); table.setPage(1);}}><X size={14} /></div> : <ChevronDown size={14} />}
                         </button>
-                        {activeDropdown === 'status' && (
+                        {statusDropdown.isOpen && (
                             <div className="absolute top-full mt-2 right-0 bg-white border border-gray-200 rounded-lg shadow-xl z-20 min-w-[150px] overflow-hidden text-black">
                                 {Object.keys(STATUS_MAP).map((key) => (
-                                    <div key={key} className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm flex items-center gap-2" onClick={() => { setFilterStatus(key); setActiveDropdown(null); setPage(1);}}>
+                                    <div key={key} className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm flex items-center gap-2" onClick={() => { setFilterStatus(key); statusDropdown.setIsOpen(false); table.setPage(1);}}>
                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_MAP[key].bg}}></div>
                                         {STATUS_MAP[key].label}
                                     </div>
@@ -286,19 +255,19 @@ export default function ProductsPage() {
                         )}
                     </div>
 
-                    <div className="relative">
+                    <div className="relative" ref={categoryDropdown.ref}>
                         <button 
                             className={`flex items-center gap-2 bg-white px-3 h-10 rounded-lg text-sm font-medium text-black shadow-sm border hover:bg-gray-50 ${filterCategory ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
-                            onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'category' ? null : 'category')}}
+                            onClick={() => categoryDropdown.setIsOpen(!categoryDropdown.isOpen)}
                         >
                             <Tag size={16} />
                             <span>{filterCategory || "Categoria"}</span>
                             {filterCategory ? <div onClick={(e) => { e.stopPropagation(); setFilterCategory(""); }}><X size={14} /></div> : <ChevronDown size={14} />}
                         </button>
-                        {activeDropdown === 'category' && (
+                        {categoryDropdown.isOpen && (
                             <div className="absolute top-full mt-2 right-0 bg-white border border-gray-200 rounded-lg shadow-xl z-20 min-w-[180px] max-h-60 overflow-y-auto text-black">
                                 {categories?.map((cat: CategoryOption) => (
-                                    <div key={cat.id} className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm" onClick={() => { setFilterCategory(cat.name); setActiveDropdown(null); }}>
+                                    <div key={cat.id} className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm" onClick={() => { setFilterCategory(cat.name); categoryDropdown.setIsOpen(false); }}>
                                         {cat.name}
                                     </div>
                                 ))}
@@ -320,60 +289,60 @@ export default function ProductsPage() {
                         <thead>
                             <tr className="text-black text-sm border-b border-gray-200 bg-white">
                                 <th className="table-clickable-header group"
-                                    onClick={() => handleSort("name")}
+                                    onClick={() => table.handleSort("name")}
                                 >
                                     <div className="flex items-center gap-2 ">
                                         Nome do produto
-                                        {renderSortIcon("name")}
+                                        {table.renderSortIcon("name")}
                                     </div>
                                 </th>
                                 <th className="table-clickable-header group"
-                                    onClick={() => handleSort("category")}
+                                    onClick={() => table.handleSort("category")}
                                 >
                                     <div className="flex items-center gap-2 ">
                                         Categoria
-                                        {renderSortIcon("category")}
+                                        {table.renderSortIcon("category")}
                                     </div>
                                 </th>
                                 <th className= "table-clickable-header group"
-                                    onClick={() => handleSort("price")}
+                                    onClick={() => table.handleSort("price")}
                                 >
                                     <div className="flex items-center gap-2 ">
                                         Preço
-                                        {renderSortIcon("price")}
+                                        {table.renderSortIcon("price")}
                                     </div>
                                 </th>
                                 <th className="table-clickable-header group"
-                                    onClick={() => handleSort("quantity")}
+                                    onClick={() => table.handleSort("quantity")}
                                 >
                                     <div className="flex items-center gap-2 ">
                                         Estoque
-                                        {renderSortIcon("quantity")}
+                                        {table.renderSortIcon("quantity")}
                                     </div>
                                 </th>
-                                <th className="table-clickable-header group" onClick={() => handleSort("created_at")}>
-                                    <div className="flex items-center gap-2">Criado em {renderSortIcon("created_at")}</div>
+                                <th className="table-clickable-header group" onClick={() => table.handleSort("created_at")}>
+                                    <div className="flex items-center gap-2">Criado em {table.renderSortIcon("created_at")}</div>
                                 </th>
                                 <th className="table-clickable-header group"
-                                    onClick={() => handleSort("created_by")}
+                                    onClick={() => table.handleSort("created_by")}
                                 >
                                     <div className="flex items-center gap-2 ">
                                         Criado por
-                                        {renderSortIcon("created_by")}
+                                        {table.renderSortIcon("created_by")}
                                     </div>
                                 </th>
                                 <th className="table-clickable-header group"
-                                    onClick={() => handleSort("active")}
+                                    onClick={() => table.handleSort("active")}
                                 >
                                     <div className="flex items-center gap-2 ">
                                         Status
-                                        {renderSortIcon("active")}
+                                        {table.renderSortIcon("active")}
                                     </div>
                                 </th>
-                                <th className="table-clickable-header group" onClick={() => handleSort("description")}>
+                                <th className="table-clickable-header group" onClick={() => table.handleSort("description")}>
                                     <div className="flex items-center gap-2 ">
                                         Descrição
-                                        {renderSortIcon("description")}
+                                        {table.renderSortIcon("description")}
                                     </div>
                                 </th>
                             </tr>
@@ -512,22 +481,22 @@ export default function ProductsPage() {
                 {!isLoadingProducts && !isErrorProducts && (
                  <div className="flex items-center justify-between mt-4 border-t border-gray-300 pt-4">
                     <span className="text-sm text-gray-500">
-                        Mostrando página <strong>{page}</strong> de <strong>{totalPages || 1}</strong> 
+                        Mostrando página <strong>{table.page}</strong> de <strong>{totalPages || 1}</strong> 
                         <span className="ml-2">({totalItems} produtos)</span>
                     </span>
 
                     <div className="flex items-center gap-2">
                         <button 
-                            onClick={() => setPage(old => Math.max(old - 1, 1))}
-                            disabled={page === 1}
+                            onClick={() => table.setPage(old => Math.max(old - 1, 1))}
+                            disabled={table.page === 1}
                             className="p-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
                         >
                             <ChevronLeft size={16} />
                         </button>
                         
                         <button 
-                            onClick={() => setPage(old => (old < totalPages ? old + 1 : old))}
-                            disabled={page >= totalPages}
+                            onClick={() => table.setPage(old => (old < totalPages ? old + 1 : old))}
+                            disabled={table.page >= totalPages}
                             className="p-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
                         >
                             <ChevronRight size={16} />

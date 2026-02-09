@@ -1,10 +1,11 @@
 "use client"
 
-import { FileInput, ChevronDown, CircleDashed, X } from "lucide-react";
+import { FileInput, ChevronDown, CircleDashed, X, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { AdminPageHeader } from "@/app/components/admin/AdminPageHeader"; 
 import { AdminToolbar } from "@/app/components/admin/AdminToolBar";
 import { DateFilter } from "@/app/components/admin/DateFilter";
+import { useQuery } from "@tanstack/react-query";
 
 const ORDER_STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = {
     PAGO: { label: "Pago", bg: "#82FF95", text: "#00410A" },
@@ -19,11 +20,11 @@ export default function OrdersPage() {
     const [filterStatus, setFilterStatus] = useState("");
     const [activeDropdown, setActiveDropdown] = useState(false);
 
-    // Mock de dados para visualizar (substituir depois pelo seu useQuery)
-    const orders = [
-        { id: 1, buyer: "João Silva", gross: 89.99, final: 99.99, date: "2025-12-12T18:35:00", status: "PAGO" },
-        { id: 2, buyer: "Maria Souza", gross: 89.99, final: 99.99, date: "2025-12-12T18:35:00", status: "ENVIADO" },
-    ];
+   /* const { data: orders, isLoading: isLoadingOrders, isError: isErrorOrders } = useQuery({
+        queryKey: ['orders'],
+        queryFn: () => {}
+    });*/
+
 
     return (
         <div className="w-full">
@@ -34,10 +35,10 @@ export default function OrdersPage() {
                 </button>
             </AdminPageHeader>
 
-            {/* CONTAINER CINZA ENVOLVENDO TUDO */}
+            
             <div className="w-full bg-[#D9D9D9] rounded-xl shadow-sm p-6">
                 
-                {/* 1. Barra de Ferramentas (Dentro do cinza) */}
+                
                 <AdminToolbar searchValue={search} onSearchChange={setSearch}>
                     
                     <DateFilter date={filterDate} setDate={setFilterDate} />
@@ -73,47 +74,33 @@ export default function OrdersPage() {
                     </div>
                 </AdminToolbar>
 
-                {/* 2. Tabela (Também dentro do cinza) */}
+                
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="text-black text-sm border-b border-gray-200 bg-white">
-                                <th className="p-4 w-10"><input type="checkbox" /></th>
-                                <th className="p-4 font-medium">Comprador</th>
-                                <th className="p-4 font-medium">Preço bruto</th>
-                                <th className="p-4 font-medium">Preço final</th>
-                                <th className="p-4 font-medium">Pedido em</th>
-                                <th className="p-4 font-medium">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-black text-sm bg-white/50"> 
-                            {/* Dica: Use bg-white/50 ou transparente no tbody se quiser ver o fundo cinza, ou bg-white para linhas brancas */}
-                            {orders.map((order) => {
-                                const statusConf = ORDER_STATUS_MAP[order.status];
-                                return (
-                                    <tr key={order.id} className="border-b border-gray-100 hover:bg-white transition-colors">
-                                        <td className="p-4"><input type="checkbox" /></td>
-                                        <td className="p-4 font-medium">{order.buyer}</td>
-                                        <td className="p-4 text-gray-600">R$ {order.gross.toFixed(2).replace('.', ',')}</td>
-                                        <td className="p-4 font-bold">R$ {order.final.toFixed(2).replace('.', ',')}</td>
-                                        <td className="p-4">
-                                            <div className="flex flex-col">
-                                                <span>{new Date(order.date).toLocaleDateString('pt-BR')}</span>
-                                                <span className="text-xs text-gray-500">{new Date(order.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
-                                            </div>
-                                        </td>
-                                        <td className="p-4">
-                                            <span className="px-3 py-1 rounded-full text-xs font-bold"
-                                                style={{ backgroundColor: statusConf.bg, color: statusConf.text }}
-                                            >
-                                                {statusConf.label}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                )
-                            })}
-                        </tbody>
-                    </table>
+                    {/*isLoadingOrders ? (
+                        <div className="flex justify-center p-10">
+                            <Loader2 className="animate-spin text-gray-500" size={32} />
+                        </div>
+                    ) : isErrorOrders ? (
+                        <div className="text-red-500 text-center p-10">Erro ao carregar produtos.</div>
+                    ) : (
+                         a tabela vai aqui
+                    )*/}
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="text-black text-sm border-b border-gray-200 bg-white">
+                                    <th className="table-clickable-header group">Comprador</th>
+                                    <th className="table-clickable-header group">Preço bruto</th>
+                                    <th className="table-clickable-header group">Preço final</th>
+                                    <th className="table-clickable-header group">Pedido em</th>
+                                    <th className="table-clickable-header group">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-black text-sm bg-white/50"> 
+                                
+                                
+                            </tbody>
+                        </table>
+
                 </div>
             </div>
         </div>
