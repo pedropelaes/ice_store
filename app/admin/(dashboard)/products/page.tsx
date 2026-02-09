@@ -8,6 +8,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useDebounce } from "@/app/hooks/useDebounce";
 import { EditableCell } from "@/app/components/admin/EditableCell";
+import { AdminPageHeader } from "@/app/components/admin/AdminPageHeader";
+import { AdminToolbar } from "@/app/components/admin/AdminToolBar";
+import { DateFilter } from "@/app/components/admin/DateFilter";
 
 interface Product {
     id: number;
@@ -219,120 +222,62 @@ export default function ProductsPage() {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6" onClick={() => setActiveDropdown(null)}>
-                <h1 className="text-xl font-bold text-black">Lista de produtos</h1>
+        <div className="w-full" onClick={() => setActiveDropdown(null)} >
+            
+            <AdminPageHeader title="Lista de produtos">
+                <button className="btn-tertiary">
+                    <FileInput size={16}/> Exportar
+                </button>
+                <Link 
+                    href="/admin/add-product"  
+                    className="btn-secondary bg-[#12581D] text-white hover:bg-[#0C3C14] flex items-center gap-2" 
+                >
+                    <Plus size={16}/> Adicionar produto
+                </Link>
+            </AdminPageHeader>
                 
-                <div className="flex gap-3">
-                    <button className="btn-tertiary ">
-                        <FileInput></FileInput>
-                        Exportar
-                    </button>
-                    <Link 
-                        href="/admin/add-product"  
-                        className="btn-secondary bg-[#12581D] text-white hover:bg-[#0C3C14] flex items-center gap-2" 
-                    >
-                        <Plus/>
-                        Adicionar produto
-                    </Link>
-                </div>
-                
-            </div>
+            
             <div className="w-full bg-[#D9D9D9] rounded-xl shadow-sm p-6" >
-                <div className="flex flex-col md:flex-row justify-between items-center p-2 rounded-lg mb-6 gap-4">
+                <AdminToolbar searchValue={search} onSearchChange={(val) => { setSearch(val); setPage(1); }}>
                     
-                    <div className="flex flex-row gap-5 items-center">
-                        <div className="relative w-full md:w-auto">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black"></Search>
-                            <input type="search" className="input-custom pl-10 placeholder-black/70" placeholder="Pesquisar"
-                            value={search} onChange={(e) => {setSearch(e.target.value); setPage(1);}}
-                            ></input>
-                        </div>
-
-                        <button
-                            onClick={handleSaveChanges}
-                            disabled={!hasChanges}
-                            className={`
-                                flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all shadow-sm
-                                ${hasChanges 
-                                    ? "bg-yellow-400 text-yellow-900 hover:bg-yellow-500 hover:shadow-md cursor-pointer translate-y-0" 
-                                    : "bg-gray-200 text-gray-400 cursor-not-allowed opacity-50"
-                                }
-                            `}
-                        >{isSaving ? (
-                                <Loader2 size={18} className="animate-spin" />
-                            ) : (
-                                <Save size={18} />
-                            )}
-                            <span>
-                                {isSaving ? "Salvando..." : `Salvar ${hasChanges ? `(${Object.keys(pendingUpdates).length})` : ""}`}
-                            </span>
-                        </button>
-                        {hasChanges && (
-                            <span className="text-[#900A00] hover:cursor-pointer"
-                                onClick={() => setPendingUpdates({})}
-                                title="Descartar alterações"
-                            >
-                                <X></X>
-                            </span>
-                        )}
-                    </div>
-
-                <div className="flex gap-2 w-full md:w-auto flex-wrap no-scrollbar">
-
-                    <div className="relative bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => {dateInputRef.current?.showPicker()}}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleSaveChanges(); }}
+                        disabled={!hasChanges || isSaving}
+                        className={`
+                            flex items-center gap-2 px-4 h-10 rounded-lg font-medium transition-all shadow-sm
+                            ${hasChanges 
+                                ? "bg-yellow-400 text-yellow-900 hover:bg-yellow-500 hover:shadow-md cursor-pointer translate-y-0" 
+                                : "bg-gray-200 text-gray-400 cursor-not-allowed opacity-50"
+                            }
+                        `}
                     >
-                        <div className={`flex items-center gap-2 pl-3 py-2 text-sm font-medium text-gray-700 ${filterDate ? 'text-black pr-8' : 'pr-3'}`}>
-                            <Calendar size={16} />
-                            <span>
-                                {filterDate 
-                                    // Adicionei 'UTC' aqui para garantir que o front mostre a mesma data que enviou pro back
-                                    ? new Date(filterDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) 
-                                    : "Selecione uma data"}
-                            </span>
-                        </div>
+                        {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                        <span>{isSaving ? "Salvando..." : `Salvar ${hasChanges ? `(${Object.keys(pendingUpdates).length})` : ""}`}</span>
+                    </button>
+                    
+                    {hasChanges && !isSaving && (
+                        <button onClick={() => setPendingUpdates({})} className="text-[#900A00] hover:bg-red-50 p-2 rounded-full" title="Descartar">
+                            <X size={20}/>
+                        </button>
+                    )}
 
-                        <input 
-                            ref={dateInputRef}
-                            type="date" 
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            value={filterDate}
-                            onChange={(e) => {setFilterDate(e.target.value); setPage(1)}}
-                        />
+                    <div className="w-px h-8 bg-gray-300 mx-1 hidden md:block"></div>
 
-                        {filterDate && (
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); setFilterDate(""); }} 
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 hover:text-red-700 z-20 bg-white rounded-full p-0.5"
-                            >
-                                <X size={14} />
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="relative">
+                    <DateFilter date={filterDate} setDate={setFilterDate} />
+                    
+                     <div className="relative">
                         <button 
-                            className={`flex items-center gap-2 bg-white px-3 py-2 rounded-lg text-sm font-medium text-black shadow-sm border hover:bg-gray-50 ${filterStatus ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
-                            onClick={() => setActiveDropdown(activeDropdown === 'status' ? null : 'status')}
+                            className={`flex items-center gap-2 bg-white px-3 h-10 rounded-lg text-sm font-medium text-black shadow-sm border hover:bg-gray-50 ${filterStatus ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'status' ? null : 'status')}}
                         >
                             <CircleDashed size={16} />
                             <span>{filterStatus ? STATUS_MAP[filterStatus]?.label : "Status"}</span>
-                            {filterStatus ? (
-                                <div onClick={(e) => { e.stopPropagation(); setFilterStatus(""); setPage(1);}} className="hover:text-red-500"><X size={14} /></div>
-                            ) : (
-                                <ChevronDown size={14} className="text-black" />
-                            )}
+                            {filterStatus ? <div onClick={(e) => { e.stopPropagation(); setFilterStatus(""); setPage(1);}}><X size={14} /></div> : <ChevronDown size={14} />}
                         </button>
-
                         {activeDropdown === 'status' && (
-                            <div className="absolute top-full mt-2 left-0 bg-white border border-gray-200 rounded-lg shadow-xl z-20 min-w-[150px] overflow-hidden text-black">
+                            <div className="absolute top-full mt-2 right-0 bg-white border border-gray-200 rounded-lg shadow-xl z-20 min-w-[150px] overflow-hidden text-black">
                                 {Object.keys(STATUS_MAP).map((key) => (
-                                    <div 
-                                        key={key}
-                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm flex items-center gap-2"
-                                        onClick={() => { setFilterStatus(key); setActiveDropdown(null); setPage(1);}}
-                                    >
+                                    <div key={key} className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm flex items-center gap-2" onClick={() => { setFilterStatus(key); setActiveDropdown(null); setPage(1);}}>
                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_MAP[key].bg}}></div>
                                         {STATUS_MAP[key].label}
                                     </div>
@@ -343,34 +288,25 @@ export default function ProductsPage() {
 
                     <div className="relative">
                         <button 
-                            className={`flex items-center gap-2 bg-white px-3 py-2 rounded-lg text-sm font-medium text-black shadow-sm border hover:bg-gray-50 ${filterCategory ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
-                            onClick={() => setActiveDropdown(activeDropdown === 'category' ? null : 'category')}
+                            className={`flex items-center gap-2 bg-white px-3 h-10 rounded-lg text-sm font-medium text-black shadow-sm border hover:bg-gray-50 ${filterCategory ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'category' ? null : 'category')}}
                         >
                             <Tag size={16} />
                             <span>{filterCategory || "Categoria"}</span>
-                            {filterCategory ? (
-                                <div onClick={(e) => { e.stopPropagation(); setFilterCategory(""); }} className="hover:text-red-500 "><X size={14} /></div>
-                            ) : (
-                                <ChevronDown size={14} className="text-black" />
-                            )}
+                            {filterCategory ? <div onClick={(e) => { e.stopPropagation(); setFilterCategory(""); }}><X size={14} /></div> : <ChevronDown size={14} />}
                         </button>
-
                         {activeDropdown === 'category' && (
-                            <div className="absolute top-full mt-2 right-0 md:left-0 bg-white border border-gray-200 rounded-lg shadow-xl z-20 min-w-[180px] max-h-60 overflow-y-auto text-black">
+                            <div className="absolute top-full mt-2 right-0 bg-white border border-gray-200 rounded-lg shadow-xl z-20 min-w-[180px] max-h-60 overflow-y-auto text-black">
                                 {categories?.map((cat: CategoryOption) => (
-                                    <div 
-                                        key={cat.id}
-                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                        onClick={() => { setFilterCategory(cat.name); setActiveDropdown(null); }}
-                                    >
+                                    <div key={cat.id} className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm" onClick={() => { setFilterCategory(cat.name); setActiveDropdown(null); }}>
                                         {cat.name}
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
-                </div>
-            </div>
+
+                </AdminToolbar>
 
             <div className="overflow-x-auto">
                 {isLoadingProducts ? (
