@@ -1,12 +1,13 @@
 "use client"
 
-import { FileInput, Plus, Search, Calendar, CircleDashed, Tag, ChevronDown, Circle, ArrowUpDown, ArrowUp, ArrowDown, X, ChevronLeft, ChevronRight} from "lucide-react";
+import { FileInput, Plus, Search, Calendar, CircleDashed, Tag, ChevronDown, Circle, ArrowUpDown, ArrowUp, ArrowDown, X, ChevronLeft, ChevronRight, Save} from "lucide-react";
 import { CategoryOption } from "../../add-product/page";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useDebounce } from "@/app/hooks/useDebounce";
+import { EditableCell } from "@/app/components/admin/EditableCell";
 
 interface Product {
     id: number;
@@ -47,8 +48,6 @@ async function getCategories() {
     return res.json();
 }
 
-type ProductStatus = "PENDING" | "ACTIVE" | "DEACTIVATED";
-
 const STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = {
     PENDING: {
         label: "Pendente",
@@ -68,7 +67,7 @@ const STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = 
 };
 
 export default function ProductsPage() {
-    const [error, setError] = useState("");
+    const queryClient = useQueryClient();
 
     const [search, setSearch] = useState("");
     const [sortConfig, setSortConfig] = useState({ field: "created_at", order: "desc" });
@@ -80,6 +79,8 @@ export default function ProductsPage() {
     const [page, setPage] = useState(1);
 
     const [activeDropdown, setActiveDropdown] = useState<null | 'status' | 'category'>(null);
+
+    const [pendingUpdates, setPendingUpdates] = useState<Record<number, Partial<Product>>>({});
 
     // products query
     const { data: products, isLoading: isLoadingProducts, isError: isErrorProducts } = useQuery({
@@ -126,6 +127,93 @@ export default function ProductsPage() {
     
     const dateInputRef = useRef<HTMLInputElement>(null);
 
+    const areArraysEqual = (arr1: any[], arr2: any[]) => {
+        if (!Array.isArray(arr1) || !Array.isArray(arr2)) return arr1 === arr2;
+        if (arr1.length !== arr2.length) return false;
+        const sorted1 = [...arr1].sort();
+        const sorted2 = [...arr2].sort();
+        return sorted1.every((value, index) => value === sorted2[index]);
+    };
+
+    const handleUpdateProduct = (id: number, field: keyof Product, newValue: any) => {
+        setPendingUpdates((prev) => {
+            const productUpdates = prev[id] || {};
+            const originalProduct = products?.data?.find((p: any) => p.id === id);
+
+            if (!originalProduct) return prev;
+
+            let originalValue: any = originalProduct[field];
+
+            // Tratamento especial para Categoria: Queremos sempre trabalhar com ARRAY DE IDs
+            if (field === 'category') {
+                if (Array.isArray(originalProduct.category)) {
+                    originalValue = originalProduct.category.map((c: any) => c.id);
+                } else if (originalProduct.category && typeof originalProduct.category === 'object') {
+                    originalValue = [originalProduct.category.id];
+                } else {
+                    originalValue = [];
+                }
+            }
+
+            // Verifica se mudou usando a comparação de arrays ou comparação simples
+            const hasChanged = Array.isArray(newValue) 
+                ? !areArraysEqual(originalValue, newValue)
+                : String(originalValue) !== String(newValue);
+
+            // Se for igual ao original, removemos do estado de pending (Undo)
+            if (!hasChanged) {
+                const { [field]: _, ...restFields } = productUpdates;
+                if (Object.keys(restFields).length === 0) {
+                    const { [id]: __, ...restProducts } = prev;
+                    return restProducts;
+                }
+                return { ...prev, [id]: restFields };
+            }
+
+            // Se mudou, atualiza
+            return {
+                ...prev,
+                [id]: { ...productUpdates, [field]: newValue }
+            };
+        });
+    };
+
+    const { mutate: saveChanges, isPending: isSaving } = useMutation({
+        mutationFn: async (updates: Record<number, Partial<Product>>) => {
+            // Aqui fazemos o fetch simples, mas encapsulado
+            const res = await fetch("/api/products/edit-products", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updates),
+            });
+
+            if (!res.ok) throw new Error("Falha ao atualizar produtos");
+            return res.json();
+        },
+        onSuccess: () => {
+            // 1. Limpa as edições pendentes (remove o amarelo)
+            setPendingUpdates({});
+            
+            // 2. Avisa o React Query que os dados de 'products' estão velhos
+            // Isso força um refetch automático da tabela com os dados novos do banco
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+            
+            // Opcional: Adicionar um Toast de sucesso aqui
+            alert("Alterações salvas com sucesso!");
+        },
+        onError: (error) => {
+            console.error(error);
+            alert("Erro ao salvar alterações. Tente novamente.");
+        }
+    });
+
+    const handleSaveChanges = () => {
+        if (!hasChanges) return;
+        saveChanges(pendingUpdates);
+    };
+
+    const hasChanges = Object.keys(pendingUpdates).length > 0;
+
     const totalItems = products?.meta?.total || 0;
     const itemsPerPage = products?.meta?.limit || 20;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -152,13 +240,43 @@ export default function ProductsPage() {
             </div>
             <div className="w-full bg-[#D9D9D9] rounded-xl shadow-sm p-6" >
                 <div className="flex flex-col md:flex-row justify-between items-center p-2 rounded-lg mb-6 gap-4">
-                
-                <div className="relative w-full md:w-auto">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black"></Search>
-                    <input type="search" className="input-custom pl-10 placeholder-black/70" placeholder="Pesquisar"
-                    value={search} onChange={(e) => {setSearch(e.target.value); setPage(1);}}
-                    ></input>
-                </div>
+                    
+                    <div className="flex flex-row gap-5 items-center">
+                        <div className="relative w-full md:w-auto">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black"></Search>
+                            <input type="search" className="input-custom pl-10 placeholder-black/70" placeholder="Pesquisar"
+                            value={search} onChange={(e) => {setSearch(e.target.value); setPage(1);}}
+                            ></input>
+                        </div>
+
+                        <button
+                            onClick={handleSaveChanges}
+                            disabled={!hasChanges}
+                            className={`
+                                flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all shadow-sm
+                                ${hasChanges 
+                                    ? "bg-yellow-400 text-yellow-900 hover:bg-yellow-500 hover:shadow-md cursor-pointer translate-y-0" 
+                                    : "bg-gray-200 text-gray-400 cursor-not-allowed opacity-50"
+                                }
+                            `}
+                        >{isSaving ? (
+                                <Loader2 size={18} className="animate-spin" />
+                            ) : (
+                                <Save size={18} />
+                            )}
+                            <span>
+                                {isSaving ? "Salvando..." : `Salvar ${hasChanges ? `(${Object.keys(pendingUpdates).length})` : ""}`}
+                            </span>
+                        </button>
+                        {hasChanges && (
+                            <span className="text-[#900A00] hover:cursor-pointer"
+                                onClick={() => setPendingUpdates({})}
+                                title="Descartar alterações"
+                            >
+                                <X></X>
+                            </span>
+                        )}
+                    </div>
 
                 <div className="flex gap-2 w-full md:w-auto flex-wrap no-scrollbar">
 
@@ -326,11 +444,13 @@ export default function ProductsPage() {
                         </thead>
                         <tbody className="text-black text-sm">
                             {products?.data?.map((prod: any) => {
-                                const statusConfig = STATUS_MAP[prod.active] || {
-                                    label: prod.active,
-                                    bg: "#E5E7EB",      
-                                    text: "#000000"
+                                const pendingData = pendingUpdates[prod.id] || {};
+
+                                const getValue = (field: keyof Product) => {
+                                    return pendingData[field] !== undefined ? pendingData[field] : prod[field];
                                 };
+
+                                const isDirty = (field: keyof Product) => pendingData[field] !== undefined;
                                 return (
                                 <tr key={prod.id} className="border-b border-gray-100 hover:bg-gray-50">
                                     <td className="p-3 flex items-center gap-3">
@@ -338,16 +458,78 @@ export default function ProductsPage() {
                                         <div className="w-10 h-10 bg-gray-200 rounded-md overflow-hidden">
                                             {prod.image_url && <img src={prod.image_url} alt="" className="w-full h-full object-cover"/>}
                                         </div>
-                                        {prod.name}
+                                        <div className="w-full">
+                                            <EditableCell
+                                                value={getValue('name')}
+                                                isModified={isDirty('name')}
+                                                onSave={(val) => handleUpdateProduct(prod.id, 'name', val)}
+                                            />
+                                        </div>
                                     </td>
                                     <td className="p-3">
-                                        {/* Se for array de categorias, mapeamos. Se for objeto único, acessamos direto. */}
-                                        {Array.isArray(prod.category) 
-                                            ? prod.category.map((c: any) => c.name).join(", ") 
-                                            : "N/A"}
+                                        <EditableCell 
+                                            // Lógica de VALOR: Sempre passamos um array de IDs para o componente editar
+                                            value={
+                                                isDirty('category') 
+                                                ? pendingData.category // Se tiver edição pendente, usa ela (já é array de IDs)
+                                                : Array.isArray(prod.category) // Se não, pega do banco e transforma em array de IDs
+                                                    ? prod.category.map((c: any) => c.id) 
+                                                    : prod.category?.id ? [prod.category.id] : []
+                                            }
+                                            type="multi-select" // Novo tipo
+                                            isModified={isDirty('category')}
+                                            options={categories?.map((c: any) => ({ label: c.name, value: c.id })) || []}
+                                            // Renderização visual quando NÃO está editando
+                                            renderValue={(valIds) => {
+                                                if (!Array.isArray(valIds) || valIds.length === 0) return <span className="text-gray-400 italic">Sem categoria</span>;
+                                                
+                                                return (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {valIds.map((val, idx) => {
+                                                            // Lógica mista:
+                                                            // Se 'val' for número, procuramos o nome na lista de categorias.
+                                                            // Se 'val' for string, significa que é uma NOVA categoria criada pelo usuário, então mostramos a string direta.
+                                                            
+                                                            let name;
+                                                            if (typeof val === 'number' || !isNaN(Number(val))) {
+                                                                const cat = categories?.find((c: any) => c.id === Number(val));
+                                                                name = cat ? cat.name : null;
+                                                            } else {
+                                                                name = val; // É uma nova categoria (String)
+                                                            }
+
+                                                            if (!name) return null;
+
+                                                            return (
+                                                                <span key={idx} className={`px-2 py-0.5 rounded text-xs border ${typeof val === 'string' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
+                                                                    {name} {typeof val === 'string' && '*'} {/* Asterisco indicando novo */}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                );
+                                            }}
+                                            
+                                            onSave={(val) => handleUpdateProduct(prod.id, 'category', val)} 
+                                        />
                                     </td>
-                                    <td className="p-3">R$ {Number(prod.price).toFixed(2)}</td>
-                                    <td className="p-3">{prod.quantity}</td>
+                                    <td className="p-3">
+                                        <EditableCell 
+                                            value={getValue('price')} 
+                                            isModified={isDirty('price')} 
+                                            type="number"
+                                            renderValue={(val) => `R$ ${Number(val).toFixed(2)}`}
+                                            onSave={(val) => handleUpdateProduct(prod.id, 'price', Number(val))} 
+                                        />
+                                    </td>
+                                    <td className="p-3">
+                                        <EditableCell
+                                            value={getValue('quantity')} 
+                                            isModified={isDirty('quantity')}
+                                            type="number"
+                                            onSave={(val) => handleUpdateProduct(prod.id, 'quantity', Number(val))}
+                                        />
+                                    </td>
                                     <td className="p-3">
                                             {new Date(prod.created_at).toLocaleDateString('pt-BR')} 
                                             <span className="text-gray-400 text-xs block">
@@ -356,17 +538,32 @@ export default function ProductsPage() {
                                         </td>
                                     <td className="p-3">{prod.admin?.name || "Admin"}</td>
                                     <td className="p-3">
-                                        <span className="text-green-700 px-2 py-1 rounded text-xs font-bold"
-                                        style={{
-                                            backgroundColor: statusConfig.bg,
-                                            color: statusConfig.text
-                                        }}
-                                        >
-                                            {statusConfig.label}
-                                        </span>
+                                        <EditableCell 
+                                            value={getValue('active')}
+                                            isModified={isDirty('active')}
+                                            type="select"
+                                            options={Object.keys(STATUS_MAP).map(k => ({ label: STATUS_MAP[k].label, value: k }))}
+                                            renderValue={(val) => {
+                                                const conf = STATUS_MAP[val] || { bg: '#eee', text: '#000', label: val };
+                                                return (
+                                                    <span className="px-2 py-1 rounded text-xs font-bold inline-block"
+                                                        style={{ backgroundColor: conf.bg, color: conf.text }}
+                                                    >
+                                                        {conf.label}
+                                                    </span>
+                                                )
+                                            }}
+                                            onSave={(val) => handleUpdateProduct(prod.id, 'active', val)} 
+                                        />
                                     </td>
-                                    <td className="p-3">
-                                        {prod.description}
+                                    <td className="p-3 max-w-xs">
+                                        <EditableCell 
+                                            value={getValue('description')} 
+                                            isModified={isDirty('description')}
+                                            type="textarea"
+                                            className="truncate"
+                                            onSave={(val) => handleUpdateProduct(prod.id, 'description', val)} 
+                                        />
                                     </td>
                                 </tr>
                                 )
