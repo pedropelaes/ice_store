@@ -17,13 +17,6 @@ const ORDER_STATUS_MAP: Record<string, { label: string; bg: string; text: string
     PENDING: { label: "Pendente", bg: "#FFBF00", text: "#584200" }
 };
 
-/*interface Order {
-    id: number,
-    total_final: number,
-    total_gross: number,
-    status: OrderStatus,
-    user: { name: string, lastName: string, email: string, cpf: string}
-}*/
 
 async function getOrders(search: string, sort: string, order: string, date: string, status: string, page: number) {
     const params = new URLSearchParams();
