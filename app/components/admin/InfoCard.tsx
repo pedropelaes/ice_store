@@ -1,10 +1,10 @@
-import { ElementType } from "react";
+import { ElementType, ReactNode } from "react";
 
 interface InfoCardProps {
     title: string;
     value: string;
     icon: ElementType;
-    description?: string; 
+    description?: ReactNode; 
 }
 
 export function InfoCard({ title, value, icon: Icon, description} : InfoCardProps) {
@@ -22,9 +22,7 @@ export function InfoCard({ title, value, icon: Icon, description} : InfoCardProp
                     </span>
                     
                     {description && (
-                        <span className="text-sm font-medium text-green-500">
-                            {description}
-                        </span>
+                        description
                     )}
                 </div>
 

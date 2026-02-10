@@ -29,56 +29,60 @@ export const DashboardService = {
     getKPIs: async () => {
         const today = new Date();
         
-        // 1. Definir intervalos de tempo
-        const startOfDay = new Date(today);
-        startOfDay.setHours(0, 0, 0, 0);
-
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-        const [monthlyRevenue, ordersToday, globalStats, totalUsers] = await Promise.all([
-           
+        const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+
+        const [monthlyRevenue, lastMonthRevenue, ordersToday, globalStats, totalUsers] = await Promise.all([
             prisma.order.aggregate({
                 _sum: { total_final: true },
-                where: {
-                    orderedAt: {
-                        gte: startOfMonth 
-                    },
-                    status: 'PAID'
+                where: { 
+                    orderedAt: { gte: startOfMonth },
+                    status: 'PAID' 
                 }
             }),
 
-            
-            prisma.order.count({
-                where: { orderedAt: { gte: startOfDay } }
+            prisma.order.aggregate({
+                _sum: { total_final: true },
+                where: { 
+                    orderedAt: { 
+                        gte: startOfLastMonth, 
+                        lte: endOfLastMonth ,
+                    },
+                    status: 'PAID' 
+                }
             }),
 
-            
+            prisma.order.count({
+                where: { 
+                    orderedAt: { 
+                        gte: new Date(new Date().setHours(0,0,0,0)) 
+                    } 
+                }
+            }),
+
             prisma.order.aggregate({
                 _sum: { total_final: true },
                 _count: { id: true }
             }),
 
-            
-            prisma.user.count({
-                where: { role: 'USER' }
-            })
+            prisma.user.count({ where: { role: 'USER' } })
         ]);
-        const currentMonthlyRevenue = Number(monthlyRevenue._sum.total_final || 0);
-        
+
+        const currentRevenue = Number(monthlyRevenue._sum.total_final || 0);
+        const lastRevenue = Number(lastMonthRevenue._sum.total_final || 0);
+
         const totalGlobalRevenue = Number(globalStats._sum.total_final || 0);
         const totalGlobalOrders = globalStats._count.id || 0;
-
-        
-        const averageTicket = totalGlobalOrders > 0 
-            ? totalGlobalRevenue / totalGlobalOrders 
-            : 0;
+        const averageTicket = totalGlobalOrders > 0 ? totalGlobalRevenue / totalGlobalOrders : 0;
 
         return {
-            monthlyRevenue: currentMonthlyRevenue,
+            monthlyRevenue: currentRevenue,
+            lastMonthRevenue: lastRevenue, 
             ordersToday,
             averageTicket,
-            totalUsers,
-            totalOrders: totalGlobalOrders // Caso precise usar em outro lugar
+            totalUsers
         };
     },
 

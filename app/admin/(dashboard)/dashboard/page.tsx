@@ -2,7 +2,7 @@ import { AdminPageHeader } from "@/app/components/admin/AdminPageHeader";
 import { SalesChart } from "@/app/components/admin/charts/SalesChart";
 import { InfoCard } from "@/app/components/admin/InfoCard";
 import { OrderStatusChart } from "@/app/components/admin/charts/OrdersChart";
-import { Receipt, ShoppingBag, ShoppingBasket, UserCircle2 } from "lucide-react";
+import { Minus, Receipt, ShoppingBag, ShoppingBasket, TrendingDown, TrendingUp, UserCircle2 } from "lucide-react";
 import { DashboardService } from "@/app/services/dashboard-service";
 
 export default async function DashboardPage() {
@@ -22,6 +22,44 @@ export default async function DashboardPage() {
             default: return { label: status, className: 'bg-gray-600' };
         }
     };
+
+    const calculateGrowth = (current: number, previous: number) => {
+        if (previous === 0) return { percent: 0, diff: current }; 
+        return {
+            percent: ((current - previous) / previous) * 100,
+            diff: current - previous
+        };
+    };
+
+    const growth = calculateGrowth(kpis.monthlyRevenue, kpis.lastMonthRevenue);
+
+    const renderGrowthLabel = () => {
+        const percentValue = growth.percent.toFixed(1);
+        
+        if (growth.percent === 0) {
+            return (
+                <span className="text-sm font-medium text-gray-400 mt-1 flex items-center gap-1">
+                    <Minus size={10} /> 0% vs mês passado
+                </span>
+            );
+        }
+
+        // CASO 2: Lucro (Positivo)
+        if (growth.percent > 0) {
+            return (
+                <span className="text-sm font-medium text-green-500 mt-1 flex items-center gap-1">
+                    <TrendingUp size={10} /> +{percentValue}% vs mês passado
+                </span>
+            );
+        }
+
+        // CASO 3: Perda (Negativo)
+        return (
+            <span className="text-sm font-medium text-red-500 mt-1 flex items-center gap-1">
+                <TrendingDown size={10} /> {percentValue}% vs mês passado
+            </span>
+        );
+    };
     
     return (
         <div className="w-full space-y-4">
@@ -29,7 +67,7 @@ export default async function DashboardPage() {
             </AdminPageHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-2">
-                <InfoCard title="Faturamento mensal" value={kpis.monthlyRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} description={"+12 vs mês passado"} icon={Receipt} ></InfoCard>
+                <InfoCard title="Faturamento mensal" value={kpis.monthlyRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} description={renderGrowthLabel()} icon={Receipt} ></InfoCard>
                 <InfoCard title="Pedidos hoje" value={kpis.ordersToday.toString()}  icon={ShoppingBag}></InfoCard>
                 <InfoCard title="Valor médio por compra" value={kpis.averageTicket.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={ShoppingBasket}></InfoCard>
                 <InfoCard title="Usuários" value={kpis.totalUsers.toString()} icon={UserCircle2}></InfoCard>
