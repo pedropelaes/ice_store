@@ -47,7 +47,6 @@ export async function GET(req: Request) {
         }
 
         if(date){
-            console.log(date);
             const startOfDay = new Date(`${date}T00:00:00.000Z`);
             const endOfDay = new Date(`${date}T23:59:59.999Z`);
 

@@ -1,12 +1,11 @@
 "use client"
 
-import { FileInput, Plus, Search, Calendar, CircleDashed, Tag, ChevronDown, Circle, ArrowUpDown, ArrowUp, ArrowDown, X, ChevronLeft, ChevronRight, Save} from "lucide-react";
+import { FileInput, Plus, CircleDashed, Tag, ChevronDown, X, ChevronLeft, ChevronRight, Save} from "lucide-react";
 import { CategoryOption } from "../../add-product/page";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { useDebounce } from "@/app/hooks/useDebounce";
 import { EditableCell } from "@/app/components/admin/EditableCell";
 import { AdminPageHeader } from "@/app/components/admin/AdminPageHeader";
 import { AdminToolbar } from "@/app/components/admin/AdminToolBar";
@@ -437,11 +436,16 @@ export default function ProductsPage() {
                                     </td>
                                     <td className="p-3">
                                             {new Date(prod.created_at).toLocaleDateString('pt-BR')} 
-                                            <span className="text-gray-400 text-xs block">
+                                            <span className="text-gray-500 text-xs block">
                                                 {new Date(prod.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
                                             </span>
                                         </td>
-                                    <td className="p-3">{prod.admin?.name || "Admin"}</td>
+                                    <td className="p-3">
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{prod.admin.name}</span>
+                                            <span className="text-xs text-gray-500" >{prod.admin.email}</span>
+                                        </div>
+                                    </td>
                                     <td className="p-3">
                                         <EditableCell 
                                             value={getValue('active')}
