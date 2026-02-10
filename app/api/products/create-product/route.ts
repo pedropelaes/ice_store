@@ -3,6 +3,7 @@ import prisma from "@/app/lib/prisma";
 import { productSchema } from "@/app/lib/validators/product";
 import bcrypt from "bcrypt"
 import { getServerSession } from "next-auth";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -76,6 +77,8 @@ export async function POST(req: Request) {
                 },
             },
         });
+
+        revalidatePath("/admin/products")
 
         return NextResponse.json(newProduct, {status: 201})
 

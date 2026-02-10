@@ -239,6 +239,7 @@ export default function AddProductPage() {
             }
 
             alert("Produto criado com sucesso!");
+            router.refresh();
             router.push("/admin/products");
         }catch(err: any){
             setLoading(false);
