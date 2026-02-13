@@ -38,6 +38,15 @@ enum ProductStatus {
   DEACTIVATED
 }
 
+enum Size {
+  P
+  M
+  G
+  GG
+  XG
+  UNIC
+}
+
 // User-related
 
 model User {
@@ -84,6 +93,7 @@ model CartItem {
   id              Int           @id @default(autoincrement())
   quantity        Int           
   unit_price      Decimal
+  size            Size
 
   // relations
   cart            Cart          @relation(fields: [cart_id], references: [id])
@@ -122,21 +132,34 @@ model PaymentMethod {
 // Product-related
 
 model Product {
-  id              Int         @id @default(autoincrement())
+  id              Int           @id @default(autoincrement())
   name            String      
   description     String
   image_url       String
   price           Decimal
+  discount_price  Decimal?      // Aquele campo que adicionamos antes
   created_at      DateTime      @default(now())
   active          ProductStatus @default(PENDING)
-  quantity        Int
 
   // relations
-  admin           User        @relation(fields: [created_by], references: [id])
+  admin           User          @relation(fields: [created_by], references: [id])
   created_by      Int
+  category        Category[]
+  items           ProductItem[] 
   orderItems      OrderItem[]
   cartItems       CartItem[]
-  category        Category[]
+}
+
+model ProductItem {
+  id            Int      @id @default(autoincrement())
+  size          Size
+  quantity      Int     
+  
+  product       Product  @relation(fields: [product_id], references: [id])
+  product_id    Int
+
+  // Garante que não possa ter dois registros de "Camiseta Azul Tamanho P" duplicados
+  @@unique([product_id, size]) 
 }
 
 model Category{
@@ -163,6 +186,7 @@ model OrderItem {
   id            Int           @id @default(autoincrement())
   quantity      Int
   unit_price    Decimal
+  size          Size
 
   // relations
   order         Order          @relation(fields: [order_id], references: [id])

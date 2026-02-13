@@ -2,7 +2,7 @@
 
 import PasswordModal from "@/app/components/modals/PasswordModal";
 import { formatCurrency, formatNumbersOnly } from "@/app/lib/formaters/formaters";
-import { ArrowRight, ImageIcon, Plus, Trash2, UploadCloud, X } from "lucide-react";
+import { ArrowRight, ImageIcon, Plus, Save, Trash2, UploadCloud, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { SyntheticEvent, useEffect, useRef, useState } from "react";
 
@@ -11,9 +11,23 @@ export interface CategoryOption {
     name: string;
 };
 
+interface DraftProduct {
+    id: string; // id temporário para o react map
+    name: string;
+    description: string;
+    price: string;
+    discount_price: string;
+    categories: string[];
+    imageFile: File | null;
+    imagePreview: string;
+    variants: { size: string; quantity: number }[];
+};
+
 export default function AddProductPage() {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [drafts, setDrafts] = useState<DraftProduct[]>([]); // produtos a serem salvos
 
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -23,9 +37,12 @@ export default function AddProductPage() {
         name: "",
         description: "",
         price: "",
-        quantity: "",
-        image_url: ""
-    })
+        discount_price: "",
+        image_url:"" 
+    });
+    const [variantInput, setVariantInput] = useState({ size: "P", quantity: "" });
+    const [currentVariants, setCurrentVariants] = useState<{ size: string; quantity: number }[]>([]);
+    const AVAILABLE_SIZES = ["P", "M", "G", "GG", "XG", "UNIC"];
 
     const [dbCategories, setDbCategories] = useState<CategoryOption[]>([]); 
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]); 
@@ -52,10 +69,23 @@ export default function AddProductPage() {
         if (!trimmedName) return;
 
         const formattedName = trimmedName.charAt(0).toUpperCase() + trimmedName.slice(1); // capitaliza primeira letra
-
         
         if (!selectedCategories.includes(formattedName)) {  // evita categorias duplicadas
             setSelectedCategories([...selectedCategories, formattedName]);
+        }
+
+        const categoryExistsInSuggestions = dbCategories.some(
+            (cat) => cat.name.toLowerCase() === formattedName.toLowerCase()
+        );
+
+        if (!categoryExistsInSuggestions) {
+            setDbCategories((prev) => [
+                ...prev, 
+                {
+                    id: Date.now(), // placeholder de id para o react
+                    name: formattedName
+                }
+            ]);
         }
         
         setCategoryInput("");
@@ -129,29 +159,73 @@ export default function AddProductPage() {
         return data.secure_url; 
     }
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         let newValue = value;
         setError("");
 
-        switch (name) {
-        case "price":
-            newValue = formatCurrency(value);
-            break;
+        if (name === "price" || name === "discount_price") newValue = formatCurrency(value);
+        if (name === "quantity") newValue = formatNumbersOnly(value);
 
-        case "quantity":
-            newValue = formatNumbersOnly(value);
-            break;
+        setFormData({ ...formData, [name]: newValue });
+    };
+
+    // Lida com o input temporário de tamanho e quantidade
+    const handleVariantChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        let newValue = value;
+        if (name === "quantity") newValue = formatNumbersOnly(value);
+        setVariantInput({ ...variantInput, [name]: newValue });
+    };
+
+    // Adiciona o tamanho na listinha do produto atual
+    const handleAddVariant = (e: SyntheticEvent) => {
+        e.preventDefault();
+        if (!variantInput.quantity || Number(variantInput.quantity) <= 0) {
+            setError("A quantidade do tamanho deve ser maior que zero.");
+            return;
+        }
         
-        default:
-            
-            break;
+        // Evita adicionar o mesmo tamanho duas vezes
+        if (currentVariants.some(v => v.size === variantInput.size)) {
+            setError(`O tamanho ${variantInput.size} já foi adicionado.`);
+            return;
         }
 
-        setFormData({
-            ...formData,
-            [name]: newValue
-        })
+        const isAddingUnic = variantInput.size === "UNIC";
+        const hasUnicInList = currentVariants.some(v => v.size === "UNIC");
+        const hasNormalInList = currentVariants.some(v => v.size !== "UNIC");
+
+        if(isAddingUnic && hasNormalInList) {
+            setError("Não é possível adicionar 'Tamanho Único' se já existem tamanhos padrão (P, M, G...) na lista.");
+            return;
+        }
+
+        if(!isAddingUnic && hasUnicInList) {
+            setError("Você já adicionou 'Tamanho Único'. Remova-o antes de adicionar tamanhos padrão.");
+            return;
+        }
+        const updatedVariants = [...currentVariants, { size: variantInput.size, quantity: Number(variantInput.quantity) }];
+        setCurrentVariants(updatedVariants);
+
+        const newHasUnic = updatedVariants.some(v => v.size === "UNIC")
+        const nextAvailableSize = AVAILABLE_SIZES.find((size) => {
+            if(newHasUnic) return false;
+            if(size === "UNIC") return false;
+
+            return !updatedVariants.some((v) => v.size === size);
+        });
+
+        setVariantInput({ 
+            size: nextAvailableSize || "P", 
+            quantity: "" 
+        });
+
+        setError("");
+    };
+
+    const handleRemoveVariant = (sizeToRemove: string) => {
+        setCurrentVariants(currentVariants.filter(v => v.size !== sizeToRemove));
     };
 
     const validateForm = () => {
@@ -160,8 +234,7 @@ export default function AddProductPage() {
         
         const priceNumber = Number(formData.price.replace(/[^0-9,]/g, "").replace(",", "."));
         if (!formData.price || priceNumber <= 0) return "O preço deve ser maior que zero.";
-        
-        if (!formData.quantity) return "A quantidade é obrigatória.";
+        if (currentVariants.length === 0) return "Adicione pelo menos um tamanho e quantidade para o produto.";
         if (selectedCategories.length === 0) return "Selecione pelo menos uma categoria.";
 
         if(!formData.image_url && !imageFile) return "A imagem do produto é obrigatoria."
@@ -169,17 +242,36 @@ export default function AddProductPage() {
         return ""; 
     };
 
-    const handleInitialSubmit = (e: SyntheticEvent) => {
+    const handleAddToList = (e: SyntheticEvent) => {
         e.preventDefault();
-        
         const validationError = validateForm();
-        if (validationError) {
-            setError(validationError);
-            return;
-        }
+        if (validationError) return setError(validationError);
 
+        const newDraft: DraftProduct = {
+            id: Math.random().toString(36).substr(2, 9),
+            name: formData.name,
+            description: formData.description,
+            price: formData.price,
+            discount_price: formData.discount_price,
+            categories: [...selectedCategories],
+            imageFile,
+            imagePreview,
+            variants: [...currentVariants]
+        };
+
+        setDrafts([...drafts, newDraft]);
+
+        setFormData({ name: "", description: "", price: "", discount_price: "", image_url: "" });
+        setCurrentVariants([]);
+        setVariantInput({ size: "P", quantity: "" });
+        setSelectedCategories([]);
+        setImageFile(null);
+        setImagePreview("");
         setError("");
-        setPasswordModalOpen(true);
+    };
+
+    const handleRemoveFromList = (id: string) => {
+        setDrafts(drafts.filter(d => d.id !== id));
     };
 
     const handleFinalSubmit = async () => {
@@ -192,53 +284,40 @@ export default function AddProductPage() {
         setmodalError("");
         
         try{
-            let finalImageUrl = formData.image_url;
-
-            if(imageFile) {
-                try{
-                    finalImageUrl = await uploadImage(imageFile);
-                }catch(uploadError){
-                    setLoading(false);
-                    setmodalError("Erro ao fazer upload da imagem. Tente novamente.");
-                    return;
+            const uploadedProducts = await Promise.all(drafts.map(async (draft) => {
+                let finalImageUrl = "";
+                if (draft.imageFile) {
+                    finalImageUrl = await uploadImage(draft.imageFile);
                 }
-            }
 
-            const priceClean = formData.price
-                .replace("R$", "")      
-                .replace(/\./g, "")     
-                .replace(",", ".")    
-                .trim();
+                // Limpar preços
+                const cleanPrice = (val: string) => Number(val.replace("R$", "").replace(/\./g, "").replace(",", ".").trim());
 
-            const payload = {
-                ...formData,
-                category: selectedCategories.join(", "),
-                price: priceClean,               
-                quantity: Number(formData.quantity), 
-                image_url: finalImageUrl,
-                password
-            };
+                return {
+                    name: draft.name,
+                    description: draft.description,
+                    price: cleanPrice(draft.price),
+                    discount_price: draft.discount_price ? cleanPrice(draft.discount_price) : undefined,
+                    category: draft.categories.join(", "),
+                    image_url: finalImageUrl,
+                    variants: draft.variants
+                };
+            }));
 
             const res = await fetch("/api/products/create-product", {
                 method: "POST",
                 headers: { "Content-Type" : "application/json" },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({products: uploadedProducts, password})
             })
 
             const productData = await res.json();
 
             if(!res.ok){
                 setLoading(false);
-
-                if (productData.errors) {
-                    const zodError = Object.values(productData.errors)[0] as any;
-                    throw new Error(zodError.message || JSON.stringify(zodError));
-                }
-
                 throw new Error(productData.message || productData.error || "Erro ao criar produto");
             }
 
-            alert("Produto criado com sucesso!");
+            alert(`${drafts.length} produto(s) criado(s) com sucesso!`);
             router.refresh();
             router.push("/admin/products");
         }catch(err: any){
@@ -263,12 +342,18 @@ export default function AddProductPage() {
         }
     };
 
+    const isAddingUnico = variantInput.size === "UNIC";
+    const hasUnico = currentVariants.some(v => v.size === "UNIC");
+    const hasNormal = currentVariants.some(v => v.size !== "UNIC");
+
+    const isButtonDisabled = (isAddingUnico && hasNormal) || (!isAddingUnico && hasUnico);
+
   return (
     <div className="min-h-screen bg-white flex flex-col"> 
       
       <header className="flex justify-between items-center p-6 text-white bg-[#999999]">
         <div className="text-2xl font-bold">(LOGO)</div>
-        <h1 className="text-2xl">Adicionar produto</h1>
+        <h1 className="text-2xl">Criação em lote</h1>
         <div className="w-10"></div> 
       </header>
 
@@ -344,11 +429,76 @@ export default function AddProductPage() {
                             className="input-custom w-full" placeholder="Ex: R$99,99"></input>
                         </div>
                         <div className="flex-1 flex-col">
-                            <label className="mb-1 font-medium text-black">Quantidade *</label>
-                            <input name="quantity" type="text" value={formData.quantity} onChange={handleChange}
-                             className="input-custom w-full" placeholder="Ex: 90"></input>
+                            <label className="mb-1 font-medium text-black text-sm">Preço Promo (Opcional)</label>
+                            <input name="discount_price" value={formData.discount_price} onChange={handleChange} className="input-custom w-full" />
                         </div>
                     </div>
+
+                    <div className="flex flex-col gap-3 bg-gray-50 p-4 rounded-md border border-gray-200">
+
+                    <label className="font-medium text-black">Tamanhos e Estoque *</label>
+                    <div className="flex flex-row gap-4 items-end">
+                        <div className="flex-1 flex-col">
+                            <span className="mb-1 text-black text-xs">Tamanho</span>
+                            <select 
+                                name="size" 
+                                value={variantInput.size} 
+                                onChange={handleVariantChange} 
+                                className="input-custom w-full bg-white" 
+                            >
+                                {AVAILABLE_SIZES.map((size) => {
+                                    const isAlreadyAdded = currentVariants.some((v) => v.size === size);
+
+                                    const hasUnico = currentVariants.some((v) => v.size === "UNIC");
+                                    const hasNormalSizes = currentVariants.some((v) => v.size !== "UNIC");
+                                    
+                                    const isConflicting = 
+                                        (size === "UNIC" && hasNormalSizes) || // Tenta add UNIC mas já tem P/M/G
+                                        (size !== "UNIC" && hasUnico);         // Tenta add P/M/G mas já tem UNIC
+                                        
+                                    const isDisabled = isAlreadyAdded || isConflicting;
+                                    
+                                    let statusText = "";
+                                    if (isAlreadyAdded) statusText = "(Adicionado)";
+                                    else if (isConflicting) statusText = "(Incompatível)";
+                                    
+                                    return (
+                                        <option 
+                                            key={size} 
+                                            value={size} 
+                                            disabled={isDisabled}
+                                            className={isDisabled ? "text-gray-400 bg-gray-100" : "text-black"}
+                                        >
+                                            {size === "UNIC" ? "Tamanho Único" : size} {statusText}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
+                        <div className="flex-1 flex-col">
+                            <span className="mb-1 text-black text-xs">Quantidade</span>
+                            <input name="quantity" value={variantInput.quantity} onChange={handleVariantChange} className="input-custom w-full" placeholder="Ex: 10" />
+                        </div>
+                        <button type="button" disabled={isButtonDisabled}
+                        onClick={handleAddVariant} className="bg-gray-800 text-white px-4 h-[42px] rounded-md hover:bg-black transition-colors text-sm font-medium disabled:bg-black/50">
+                            Adicionar
+                        </button>
+                    </div>
+
+                    {currentVariants.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-gray-200">
+                            {currentVariants.map((variant) => (
+                                <div key={variant.size} className="bg-white border border-gray-300 px-3 py-1.5 rounded-full flex items-center gap-2 text-sm text-black shadow-sm">
+                                    <span className="font-bold">{variant.size === "UNIC" ? "Tamanho Único" : variant.size}</span>
+                                    <span className="text-gray-500">({variant.quantity} un)</span>
+                                    <button type="button" onClick={() => handleRemoveVariant(variant.size)} className="text-red-500 hover:text-red-700 ml-1">
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                     <div className="flex flex-col relative">
                     <label className="mb-1 font-medium text-black">Categoria *</label>
@@ -413,14 +563,48 @@ export default function AddProductPage() {
             </div>
         </div>
             <div className="flex flex justify-center mt-8 mb-2">
-                <button className="btn-primary" onClick={handleInitialSubmit}>
-                    Criar produto
+                <button className="btn-primary" onClick={handleAddToList}>
+                    Adicionar a lista
                     <Plus></Plus>
                 </button>
             </div>
             <div className="flex flex justify-center mb-2">
                 {error && <p className="text-red-500 text-sm">{error}</p>}
             </div>
+        </div>
+        
+        <div className="bg-white w-full lg:w-1/3 rounded-xl p-6 shadow-lg border border-gray-200 sticky top-6">
+            <h2 className="text-xl font-bold mb-4 text-black flex justify-between">
+                Itens na Lista <span className="bg-blue-600 text-white text-sm px-3 py-1 rounded-full">{drafts.length}</span>
+            </h2>
+
+            <div className="space-y-4 mb-6 max-h-[50vh] overflow-y-auto pr-2">
+                {drafts.length === 0 ? (
+                    <p className="text-gray-400 text-center py-8">Nenhum produto adicionado ainda.</p>
+                ) : (
+                    drafts.map((draft) => (
+                        <div key={draft.id} className="flex gap-4 p-3 border rounded-lg items-center bg-gray-50">
+                            <img src={draft.imagePreview} alt="" className="w-16 h-16 object-cover rounded-md" />
+                            <div className="flex-1">
+                                <p className="font-bold text-black text-sm">{draft.name}</p>
+                                <p className="text-xs text-gray-600">{draft.price} • Tam: {draft.variants.length} (Qtd: {draft.variants[0].quantity})</p>
+                            </div>
+                            <button onClick={() => handleRemoveFromList(draft.id)} className="text-red-500 hover:bg-red-100 p-2 rounded-md">
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            <button 
+                className="w-full btn-primary py-3 flex justify-center items-center gap-2 disabled:opacity-50"
+                disabled={drafts.length === 0}
+                onClick={() => setPasswordModalOpen(true)}
+            >
+                <Save size={20} />
+                Salvar Tudo no Banco
+            </button>
         </div>
       </main>
 

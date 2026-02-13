@@ -15,21 +15,16 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        const { password: password, ...productData } = body;
+        const { password: password, products } = body;
 
         if (!password) {
             return NextResponse.json({ message: "Password is required" }, { status: 400 });
         }
-        
-        const parsed = productSchema.safeParse(productData);
 
-        if(!parsed.success){
-            return NextResponse.json(
-                { errors: parsed.error},
-                { status: 400 }
-            )
+        if(!products || !Array.isArray(products) || products.length === 0){
+            return NextResponse.json({ message: "Nenhum produto enviado." }, { status: 400 });
         }
-
+        
         const adminId = Number(session.user.id);
 
         if(isNaN(adminId)){
@@ -58,29 +53,44 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Wrong password" }, { status: 403 });
         }
 
-        const { category, ...productInfo } = parsed.data;
+        const createdProducts = await prisma.$transaction(
+            products.map((p: any) => {
+                // Prepara as categorias
+                const categoryList = p.category
+                    .split(',')
+                    .map((c: string) => c.trim())
+                    .filter((c: string) => c.length > 0);
 
-        const categoryList = category
-            .split(',')
-            .map((c) => c.trim())
-            .filter((c) => c.length > 0);
-
-        const newProduct = await prisma.product.create({
-            data: {
-                ...productInfo, 
-                created_by: adminId,
-                category: {
-                    connectOrCreate: categoryList.map((catName) => ({
-                        where: { name: catName },
-                        create: { name: catName },
-                    })),
-                },
-            },
-        });
+                return prisma.product.create({
+                    data: {
+                        name: p.name,
+                        description: p.description,
+                        price: p.price,
+                        discount_price: p.discount_price || null, // Novo campo
+                        image_url: p.image_url,
+                        created_by: adminId,
+                        
+                        items: {
+                            create: p.variants.map((variant: any) => ({
+                                size: variant.size,
+                                quantity: variant.quantity
+                            }))
+                        },
+                        
+                        category: {
+                            connectOrCreate: categoryList.map((catName: string) => ({
+                                where: { name: catName },
+                                create: { name: catName },
+                            })),
+                        },
+                    },
+                });
+            })
+        );
 
         revalidatePath("/admin/products")
 
-        return NextResponse.json(newProduct, {status: 201})
+        return NextResponse.json(createdProducts, {status: 201});
 
     }catch( error ){
         console.log(error)
