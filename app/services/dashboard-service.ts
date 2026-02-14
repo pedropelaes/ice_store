@@ -12,6 +12,19 @@ export interface OrderStatusData {
     color: string;
 }
 
+export interface LowStockProduct {
+    id: number;
+    name: string;
+    image_url: string;
+    totalStock: number;
+    items: {
+        size: string;
+        quantity: number;
+    }[];
+}
+
+
+ 
 export const DashboardService = {
     getRecentOrders: async () => {
         return await prisma.order.findMany({
@@ -34,7 +47,7 @@ export const DashboardService = {
         const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
 
-        const [monthlyRevenue, lastMonthRevenue, ordersToday, globalStats, totalUsers] = await Promise.all([
+        const [monthlyRevenue, lastMonthRevenue, ordersToday, globalStats, totalUsers, stockValueResult, totalStock, activeStock] = await Promise.all([
             prisma.order.aggregate({
                 _sum: { total_final: true },
                 where: { 
@@ -67,7 +80,17 @@ export const DashboardService = {
                 _count: { id: true }
             }),
 
-            prisma.user.count({ where: { role: 'USER' } })
+            prisma.user.count({ where: { role: 'USER' } }),
+
+            prisma.$queryRaw<any[]>`
+                SELECT COALESCE(SUM(price * "totalStock"), 0) as total
+                FROM "Product"
+                WHERE active = 'ACTIVE'
+            `,
+
+            prisma.product.count(),
+
+            prisma.product.count({ where: { active: 'ACTIVE' } })
         ]);
 
         const currentRevenue = Number(monthlyRevenue._sum.total_final || 0);
@@ -76,13 +99,17 @@ export const DashboardService = {
         const totalGlobalRevenue = Number(globalStats._sum.total_final || 0);
         const totalGlobalOrders = globalStats._count.id || 0;
         const averageTicket = totalGlobalOrders > 0 ? totalGlobalRevenue / totalGlobalOrders : 0;
+        const stockValue = Number(stockValueResult[0]?.total || 0);
 
         return {
             monthlyRevenue: currentRevenue,
             lastMonthRevenue: lastRevenue, 
             ordersToday,
             averageTicket,
-            totalUsers
+            totalUsers,
+            stockValue,
+            totalStock, 
+            activeStock,
         };
     },
 
@@ -121,5 +148,43 @@ export const DashboardService = {
             date: r.date,
             total: Number(r.total)
         }));
-    }
+    },
+
+    getLowStockProducts: async (threshold = 5): Promise<LowStockProduct[]> => {
+        const products = await prisma.product.findMany({
+            where: {
+                active: 'ACTIVE', 
+                items: {
+                    some: {
+                        quantity: {
+                            lte: threshold
+                        }
+                    }
+                }
+            },
+            take: 5, 
+            select: {
+                id: true,
+                name: true,
+                image_url: true,
+                totalStock: true,
+                items: {
+                    where: {
+                        quantity: {
+                            lte: threshold // Traz apenas os tamanhos que estão acabando
+                        }
+                    },
+                    orderBy: {
+                        quantity: 'asc'
+                    },
+                    select: {
+                        size: true,
+                        quantity: true
+                    }
+                }
+            }
+        });
+
+        return products;
+    },
 }

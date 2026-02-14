@@ -2,16 +2,18 @@ import { AdminPageHeader } from "@/app/components/admin/AdminPageHeader";
 import { SalesChart } from "@/app/components/admin/charts/SalesChart";
 import { InfoCard } from "@/app/components/admin/InfoCard";
 import { OrderStatusChart } from "@/app/components/admin/charts/OrdersChart";
-import { Minus, Receipt, ShoppingBag, ShoppingBasket, TrendingDown, TrendingUp, UserCircle2 } from "lucide-react";
+import { Activity, CandlestickChart, Minus, Receipt, ShoppingBag, ShoppingBasket, TrendingDown, TrendingUp, UserCircle2, Warehouse } from "lucide-react";
 import { DashboardService } from "@/app/services/dashboard-service";
+import { LowStockWidget } from "@/app/components/admin/widgets/LowStockWidget";
 
 export default async function DashboardPage() {
 
-    const [recentOrders, kpis, statusData, salesData] = await Promise.all([
+    const [recentOrders, kpis, statusData, salesData, lowStockData] = await Promise.all([
         DashboardService.getRecentOrders(),
         DashboardService.getKPIs(),
         DashboardService.getOrderStatusDistribution(),
-        DashboardService.getSalesByDay()
+        DashboardService.getSalesByDay(),
+        DashboardService.getLowStockProducts(5),
     ]);
 
     const getStatusStyle = (status: string) => {
@@ -115,6 +117,14 @@ export default async function DashboardPage() {
                         </tbody>
                     </table>
                 </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-2">
+                <InfoCard title="Valor do estoque" value={kpis.stockValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={CandlestickChart}></InfoCard>
+                <InfoCard title="Produtos" value={kpis.totalStock.toString()} icon={Warehouse}></InfoCard>
+                <InfoCard title="Produtos ativos" value={kpis.activeStock.toString()} icon={Activity}></InfoCard>
+            </div>
+            <div className="lg:col-span-1 h-full p-2">
+                <LowStockWidget data={lowStockData} />
             </div>
         </div>
     )
