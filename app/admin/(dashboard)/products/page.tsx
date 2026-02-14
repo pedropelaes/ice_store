@@ -12,13 +12,22 @@ import { AdminToolbar } from "@/app/components/admin/AdminToolBar";
 import { DateFilter } from "@/app/components/admin/DateFilter";
 import { useAdminTable } from "@/app/hooks/useAdminTableSort";
 import { useClickOutside } from "@/app/hooks/useClickOutside";
+import { StockCell } from "@/app/components/admin/StockCell";
+
+export interface ProductItem{
+    id?: string;
+    size: string;
+    quantity: number;
+}
+export const SIZES = ["P", "M", "G", "GG", "XG", "UNIC"] as const;
 
 interface Product {
     id: number;
     name: string;
     description: string;
     price: number;
-    quantity: number;
+    discount_price: number;
+    items: ProductItem[];
     category: CategoryOption;
     image_url: string;
     active: string;
@@ -101,6 +110,14 @@ export default function ProductsPage() {
     const areArraysEqual = (arr1: any[], arr2: any[]) => {
         if (!Array.isArray(arr1) || !Array.isArray(arr2)) return arr1 === arr2;
         if (arr1.length !== arr2.length) return false;
+
+        // Se forem objetos complexos (como ProductItem)
+        if (typeof arr1[0] === 'object') {
+            return JSON.stringify(arr1.sort((a,b) => a.size.localeCompare(b.size))) === 
+                JSON.stringify(arr2.sort((a,b) => a.size.localeCompare(b.size)));
+        }
+
+        // Array simples
         const sorted1 = [...arr1].sort();
         const sorted2 = [...arr2].sort();
         return sorted1.every((value, index) => value === sorted2[index]);
@@ -276,7 +293,7 @@ export default function ProductsPage() {
 
                 </AdminToolbar>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto pb-40 min-h-[400px]">
                 {isLoadingProducts ? (
                     <div className="flex justify-center p-10">
                         <Loader2 className="animate-spin text-gray-500" size={32} />
@@ -309,6 +326,14 @@ export default function ProductsPage() {
                                     <div className="flex items-center gap-2 ">
                                         Preço
                                         {table.renderSortIcon("price")}
+                                    </div>
+                                </th>
+                                <th className="table-clickable-header group"
+                                    onClick={() => table.handleSort("discount_price")}
+                                >
+                                    <div className="flex items-center gap-2 ">
+                                        Preço de Desconto
+                                        {table.renderSortIcon("discount_price")}
                                     </div>
                                 </th>
                                 <th className="table-clickable-header group"
@@ -427,11 +452,23 @@ export default function ProductsPage() {
                                         />
                                     </td>
                                     <td className="p-3">
-                                        <EditableCell
-                                            value={getValue('quantity')} 
-                                            isModified={isDirty('quantity')}
+                                        <EditableCell 
+                                            value={getValue('discount_price')} 
+                                            isModified={isDirty('discount_price')} 
                                             type="number"
-                                            onSave={(val) => handleUpdateProduct(prod.id, 'quantity', Number(val))}
+                                            renderValue={(val) => `R$ ${Number(val).toFixed(2)}`}
+                                            onSave={(val) => handleUpdateProduct(prod.id, 'discount_price', Number(val))} 
+                                        />
+                                    </td>
+                                    <td className="p-3">
+                                        <StockCell 
+                                            value={
+                                                (isDirty('items') ? pendingData.items : prod.items) || []
+                                            }
+                                            
+                                            isModified={isDirty('items')}
+                                            
+                                            onSave={(newItems) => handleUpdateProduct(prod.id, 'items', newItems)}
                                         />
                                     </td>
                                     <td className="p-3">

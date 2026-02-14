@@ -72,19 +72,31 @@ export async function GET(req: Request) {
             case 'category':
                 orderByCondition = { category: { _count: validOrder } }; // N:N -> order by quantity
                 break;
-
+            case 'quantity': 
+                orderByCondition = { totalStock: {_count: validOrder} };
+                break;
             default:
                 orderByCondition = { [sortField]: validOrder };
                 break;
         }
 
-        const products = await prisma.product.findMany({
+        const productsRaw = await prisma.product.findMany({
             where: whereCondition,
             orderBy: orderByCondition,
             take: limit,
             skip: skip,
             include: {
                 category: true,
+                items: { 
+                    select: {
+                        id: true,
+                        size: true,
+                        quantity: true
+                    },
+                    orderBy: {
+                        id: 'asc' 
+                    }
+                },
                 admin: {
                     select: {
                         name: true,
@@ -93,11 +105,19 @@ export async function GET(req: Request) {
                 }
             }
         });
+
+        const productsFormatted = productsRaw.map(product => {
+            const totalStock = product.items.reduce((acc, item) => acc + item.quantity, 0);
+            return {
+                ...product,
+                totalStock, 
+            };
+        });
         
         const total = await prisma.product.count({ where: whereCondition });
         return NextResponse.json(
             {
-                data: products,
+                data: productsFormatted,
                 meta: { total, page, limit }, 
             },
             { status: 200 }

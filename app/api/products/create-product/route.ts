@@ -61,6 +61,10 @@ export async function POST(req: Request) {
                     .map((c: string) => c.trim())
                     .filter((c: string) => c.length > 0);
 
+                const calculatedTotalStock = Array.isArray(p.variants) 
+                    ? p.variants.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 0), 0)
+                    : 0;
+
                 return prisma.product.create({
                     data: {
                         name: p.name,
@@ -69,6 +73,7 @@ export async function POST(req: Request) {
                         discount_price: p.discount_price || null, // Novo campo
                         image_url: p.image_url,
                         created_by: adminId,
+                        totalStock: calculatedTotalStock,
                         
                         items: {
                             create: p.variants.map((variant: any) => ({

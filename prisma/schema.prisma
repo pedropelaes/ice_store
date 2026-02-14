@@ -140,6 +140,7 @@ model Product {
   discount_price  Decimal?      // Aquele campo que adicionamos antes
   created_at      DateTime      @default(now())
   active          ProductStatus @default(PENDING)
+  totalStock      Int           @default(0)
 
   // relations
   admin           User          @relation(fields: [created_by], references: [id])

@@ -15,7 +15,7 @@ export async function PATCH(req: Request) {
                 const id = Number(idStr);
                 const updates = data[idStr];
 
-                const { category, ...simpleFields } = updates;
+                const { category, items, quantity, ...simpleFields } = updates;
 
                 let prismaUpdateData: any = { ...simpleFields };
 
@@ -45,10 +45,43 @@ export async function PATCH(req: Request) {
                     };
                 }
 
-                return tx.product.update({
-                    where: { id: id },
-                    data: prismaUpdateData,
-                });
+                if(items && Array.isArray(items)) {
+                    const itemPromises = items.map(async (item: any) => {
+                        if(!item.size) return;
+
+                        return tx.productItem.upsert({
+                            where: {
+                                product_id_size: {
+                                    product_id: id,
+                                    size: item.size
+                                }
+                            },
+                            update: {
+                                quantity: Number(item.quantity)
+                            },
+                            create: {
+                                product_id: id,
+                                size: item.size,
+                                quantity: Number(item.quantity)
+                            }
+                        });
+                    });
+                    await Promise.all(itemPromises);
+
+                    const aggregate = await tx.productItem.aggregate({
+                        where: { product_id: id },
+                        _sum: { quantity: true }
+                    });
+                    prismaUpdateData.totalStock = aggregate._sum.quantity || 0;
+                }
+                if(Object.keys(prismaUpdateData).length > 0){    
+                    return tx.product.update({
+                        where: { id: id },
+                        data: prismaUpdateData,
+                    });
+                }
+
+                return {id, status: "items updated"};
             });
 
             return Promise.all(updatePromises);
