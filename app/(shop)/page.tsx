@@ -3,7 +3,7 @@ import prisma from "@/app/lib/prisma";
 import Link from "next/link";
 
 // Função auxiliar para converter os dados do Prisma para o Front-end
-const serializeProduct = (product: any) => ({
+export const serializeProduct = (product: any) => ({
   ...product,
   price: Number(product.price),
   discount_price: product.discount_price ? Number(product.discount_price) : null,

@@ -13,13 +13,14 @@ import { DateFilter } from "@/app/components/admin/DateFilter";
 import { useAdminTable } from "@/app/hooks/useAdminTableSort";
 import { useClickOutside } from "@/app/hooks/useClickOutside";
 import { StockCell } from "@/app/components/admin/StockCell";
+import { Size } from "@/app/generated/prisma";
 
 export interface ProductItem{
     id?: string;
     size: string;
     quantity: number;
 }
-export const SIZES = ["P", "M", "G", "GG", "XG", "UNIC"] as const;
+export const SIZES = Object.values(Size);
 
 interface Product {
     id: number;
