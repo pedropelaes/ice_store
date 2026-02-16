@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { LayoutDashboard, LogOut, Search, ShoppingCart, User } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface HeaderProps {
   user?: {
@@ -12,19 +13,64 @@ interface HeaderProps {
   }
 }
 
-export function Header({user}: HeaderProps) {
-    const [activeDropdown, setActiveDropdown] = useState<null | "user">(null);
+function SearchBar() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [term, setTerm] = useState(searchParams.get("search") || "");
 
-    const dropdownRef = useRef<HTMLDivElement>(null);
-        useEffect(() => {
-            function handleClickOutside(event: MouseEvent) {
-                if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                    setActiveDropdown(null);
-                }
-            }
-            document.addEventListener("mousedown", handleClickOutside);
-            return () => document.removeEventListener("mousedown", handleClickOutside);
-        }, []);
+  useEffect(() => {
+    setTerm(searchParams.get("search") || "");
+  }, [searchParams]); 
+
+  const handleSearch = () => {
+    if(term.trim()) {
+      router.push(`/catalog?search=${encodeURIComponent(term.trim())}`);
+    } else {
+      router.push(`/catalog`);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if(e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  return (
+    <div className="relative rounded-full bg-white text-black">
+        <input 
+          type="search"
+          placeholder="Pesquisar" 
+          className="pl-10 pr-4 py-2 rounded-full text-sm outline-none w-[200px] transition-all focus:w-[240px]"
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <button 
+            onClick={handleSearch}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black z-10"
+            aria-label="Buscar"
+        >
+            <Search className="w-4 h-4" />
+        </button>
+    </div>
+  )
+}
+
+
+export function Header({user}: HeaderProps) {
+  const [activeDropdown, setActiveDropdown] = useState<null | "user">(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+      function handleClickOutside(event: MouseEvent) {
+          if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+              setActiveDropdown(null);
+          }
+      }
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
         
   return (
     <header className="w-full bg-[#999999] text-white py-4 px-8">
@@ -36,16 +82,19 @@ export function Header({user}: HeaderProps) {
           </Link>
 
           <nav className="hidden md:flex gap-6 text-sm font-medium">
-            <Link href="/ofertas" className="hover:text-gray-200 transition-colors">
+            <Link href="/catalog" className="hover:text-gray-200 transition-colors">
+              Catálogo
+            </Link>
+            <Link href="/catalog?sale=true" className="hover:text-gray-200 transition-colors">
               Ofertas
             </Link>
-            <Link href="/lancamentos" className="hover:text-gray-200 transition-colors">
+            <Link href="/catalog?sort=newest" className="hover:text-gray-200 transition-colors">
               Lançamentos
             </Link>
-            <Link href="/masculino" className="hover:text-gray-200 transition-colors">
+            <Link href="/catalog?category=Masculino" className="hover:text-gray-200 transition-colors">
               Masculino
             </Link>
-            <Link href="/feminino" className="hover:text-gray-200 transition-colors">
+            <Link href="/catalog?category=Feminino" className="hover:text-gray-200 transition-colors">
               Feminino
             </Link>
           </nav>
@@ -53,14 +102,9 @@ export function Header({user}: HeaderProps) {
 
         <div className="flex items-center gap-6">
           
-          <div className="relative rounded-full bg-white">
-            <input 
-              type="search" 
-              placeholder="Pesquisar" 
-              className="pl-10 pr-4 py-2 rounded-full text-black text-sm outline-none w-min"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-          </div>
+          <Suspense fallback={<div className="w-[200px] h-9 bg-white/20 rounded-full animate-pulse" />}>
+             <SearchBar />
+          </Suspense>
 
           <div className="flex items-center gap-4">
             <Link href="/cart" className="hover:opacity-80">

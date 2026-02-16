@@ -18,8 +18,13 @@ async function getCatalogData(searchParams: { [key: string]: string | string[] |
     const search = typeof searchParams.search === 'string' ? searchParams.search : undefined;
 
     const sizeParam = typeof searchParams.size === 'string' ? searchParams.size : undefined;
-    const minPrice = typeof searchParams.minPrice === 'string' ? Number(searchParams.minPrice) : undefined;
-    const maxPrice = typeof searchParams.maxPrice === 'string' ? Number(searchParams.maxPrice) : undefined;
+    const minPrice = typeof searchParams.minPrice === 'string' && !isNaN(Number(searchParams.minPrice)) 
+        ? Number(searchParams.minPrice) 
+        : undefined;
+    const maxPrice = typeof searchParams.maxPrice === 'string' && !isNaN(Number(searchParams.maxPrice)) 
+        ? Number(searchParams.maxPrice) 
+        : undefined;
+    const sale = searchParams.sale === 'true';
 
     const page = typeof searchParams.page === 'string' ? Number(searchParams.page) : 1;
     const currentPage = page > 0 ? page : 1;
@@ -46,6 +51,11 @@ async function getCatalogData(searchParams: { [key: string]: string | string[] |
             price: {
                 ...(minPrice !== undefined && { gte: minPrice }),
                 ...(maxPrice !== undefined && { lte: maxPrice }),
+            }
+        }),
+        ...(sale && {
+            discount_price: {
+                gt: 0
             }
         })
     };
@@ -106,15 +116,27 @@ export default async function CatalogPage({
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
     const params = await searchParams;
-  const { products, categories, pagination } = await getCatalogData(params);
+    const { products, categories, pagination } = await getCatalogData(params);
 
+    let pageTitle = "Catálogo";
+
+    if (params.search) {
+        pageTitle = `Busca: "${params.search}"`;
+    } else if (params.sale === 'true') {
+        pageTitle = "Ofertas";
+    } else if (params.sort === 'newest') {
+        pageTitle = "Lançamentos";
+    } else if (params.category) {
+        pageTitle = Array.isArray(params.category) ? params.category[0] : params.category;
+    }
+    pageTitle = `${pageTitle} (${pagination.totalItems})`
   return (
     <div className="bg-white min-h-screen text-black pb-20">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 border-b border-gray-100 pb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{`Catálogo (${pagination.totalItems})`}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
             <div className="flex flex-wrap gap-2 text-sm text-gray-500 mt-1">
                 {params.search && <span>para "{params.search}"</span>}
                 {params.category && <span className="bg-gray-100 px-2 rounded-full text-xs flex items-center">Categ: {params.category}</span>}
