@@ -74,7 +74,7 @@ async function getCatalogData(searchParams: { [key: string]: string | string[] |
             break;
         case 'newest': 
         default: 
-            orderBy = { created_at: 'desc' }; 
+            orderBy = { launched_at: 'desc' }; 
             break;
     }
 

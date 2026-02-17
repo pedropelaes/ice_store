@@ -8,6 +8,7 @@ export const serializeProduct = (product: any) => ({
   price: Number(product.price),
   discount_price: product.discount_price ? Number(product.discount_price) : null,
   created_at: product.created_at.toISOString(),
+  launched_at: product.launched_at ? product.launched_at.toISOString() : null,
   // Se houver items, garante que sejam objetos simples também
   items: product.items || []
 });
@@ -21,7 +22,7 @@ async function getHomeData() {
 
     prisma.product.findMany({
       take: 8,
-      orderBy: {created_at: 'desc'},
+      orderBy: {launched_at: 'desc'},
       where: {active: 'ACTIVE'},
       include: {
         category: true,

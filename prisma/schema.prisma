@@ -141,6 +141,7 @@ model Product {
   created_at      DateTime      @default(now())
   active          ProductStatus @default(PENDING)
   totalStock      Int           @default(0)
+  launched_at     DateTime? 
 
   // relations
   admin           User          @relation(fields: [created_by], references: [id])

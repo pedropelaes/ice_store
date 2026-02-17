@@ -19,6 +19,10 @@ export async function PATCH(req: Request) {
 
                 let prismaUpdateData: any = { ...simpleFields };
 
+                if(simpleFields.active === 'ACTIVE'){
+                    prismaUpdateData.launched_at = new Date();
+                }
+
                 if(category && Array.isArray(category)) {
                     const categoryIds: number[] = [];
                     const newCategoryNames: string[] = [];
