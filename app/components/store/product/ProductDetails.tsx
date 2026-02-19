@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 import { Product, ProductItem, Size } from "@/app/generated/prisma";
+import { addToCart } from "@/app/actions/cart";
+import { useRouter } from "next/navigation";
 
 interface ProductDetailsProps {
   product: Product & {
@@ -14,6 +16,7 @@ interface ProductDetailsProps {
 export function ProductDetails({ product }: ProductDetailsProps) {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const router = useRouter();
 
   // Calcular Estoque Disponível por Tamanho
   const getStockForSize = (size: string) => {
@@ -39,16 +42,21 @@ export function ProductDetails({ product }: ProductDetailsProps) {
 
   const handleAddToCart = () => {
     if (!selectedSize) return;
-    
-    console.log("Adicionar ao Carrinho:", {
-      productId: product.id,
-      size: selectedSize,
-      quantity,
-      price: product.discount_price || product.price
+
+    startTransition(async () => {
+      const result = await addToCart(product.id, selectedSize as Size, quantity);
+
+      if (result.success) {
+        router.push('/cart');
+      } else {
+        if (result.error === "Você precisa estar logado para adicionar itens.") {
+            alert(result.error);
+            router.push('/auth/login');
+        } else {
+            alert(result.error);
+        }
+      }
     });
-    
-    // TODO: Integrar com contexto do Carrinho aqui
-    alert("Produto adicionado à sacola (simulação)");
   };
 
   const handleManualQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
