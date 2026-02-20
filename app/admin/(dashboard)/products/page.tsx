@@ -14,6 +14,7 @@ import { useAdminTable } from "@/app/hooks/useAdminTableSort";
 import { useClickOutside } from "@/app/hooks/useClickOutside";
 import { StockCell } from "@/app/components/admin/StockCell";
 import { Size } from "@/app/generated/prisma";
+import { LogisticsCell } from "@/app/components/admin/LogisticsCell";
 
 export interface ProductItem{
     id?: string;
@@ -29,6 +30,10 @@ interface Product {
     price: number;
     discount_price: number;
     items: ProductItem[];
+    weight: number;
+    length: number;
+    width: number;
+    height: number;
     category: CategoryOption;
     image_url: string;
     active: string;
@@ -345,6 +350,12 @@ export default function ProductsPage() {
                                         {table.renderSortIcon("quantity")}
                                     </div>
                                 </th>
+                                <th className="table-clickable-header group"
+                                    onClick={() => table.handleSort("logistics")}    
+                                >
+                                    Logística
+                                    {table.renderSortIcon("logistics")}
+                                </th>
                                 <th className="table-clickable-header group" onClick={() => table.handleSort("created_at")}>
                                     <div className="flex items-center gap-2">Criado em {table.renderSortIcon("created_at")}</div>
                                 </th>
@@ -470,6 +481,30 @@ export default function ProductsPage() {
                                             isModified={isDirty('items')}
                                             
                                             onSave={(newItems) => handleUpdateProduct(prod.id, 'items', newItems)}
+                                        />
+                                    </td>
+                                    <td className="p-3">
+                                        <LogisticsCell
+                                            value={{
+                                                weight: Number(getValue('weight')) || 0,
+                                                length: Number(getValue('length')) || 0,
+                                                width: Number(getValue('width')) || 0,
+                                                height: Number(getValue('height')) || 0,
+                                            }}
+
+                                            isModified={
+                                                isDirty('weight') || 
+                                                isDirty('length') || 
+                                                isDirty('width') || 
+                                                isDirty('height')
+                                            }
+                                            
+                                            onSave={(newValues) => {
+                                                handleUpdateProduct(prod.id, 'weight', newValues.weight);
+                                                handleUpdateProduct(prod.id, 'length', newValues.length);
+                                                handleUpdateProduct(prod.id, 'width', newValues.width);
+                                                handleUpdateProduct(prod.id, 'height', newValues.height);
+                                            }}
                                         />
                                     </td>
                                     <td className="p-3">

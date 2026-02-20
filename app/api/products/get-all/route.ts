@@ -73,8 +73,10 @@ export async function GET(req: Request) {
                 orderByCondition = { category: { _count: validOrder } }; // N:N -> order by quantity
                 break;
             case 'quantity': 
-                orderByCondition = { totalStock: {_count: validOrder} };
+                orderByCondition = { totalStock: validOrder };
                 break;
+            case 'logistics':
+                orderByCondition = { weight: validOrder };
             default:
                 orderByCondition = { [sortField]: validOrder };
                 break;
