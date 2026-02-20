@@ -1,16 +1,20 @@
 "use client"
 
+import { useState } from "react";
 import { ShippingCalculator } from "./ShippingCalculator";
 import { ChevronRight } from "lucide-react";
 
 interface OrderSummaryProps {
   subtotal: number;
-  shippingFee?: number;
   isValidCart: boolean;
 }
 
-export function OrderSummary({ subtotal, shippingFee = 0, isValidCart }: OrderSummaryProps) {
-  const total = subtotal + shippingFee;
+export function OrderSummary({ subtotal, isValidCart }: OrderSummaryProps) {
+  const [shippingFee, setShippingFee] = useState<number | null>(null);
+  const total = subtotal + (shippingFee || 0);
+
+  const hasCalculatedShipping = shippingFee !== null;
+  const canProceed = isValidCart && hasCalculatedShipping;
 
   return (
     <div className="bg-[#999999] text-white p-6 rounded-xl shadow-sm sticky top-24">
@@ -26,7 +30,11 @@ export function OrderSummary({ subtotal, shippingFee = 0, isValidCart }: OrderSu
         <div className="flex justify-between">
           <span className="text-gray-200">Frete:</span>
           <span className="font-medium">
-             {shippingFee === 0 ? "A calcular" : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(shippingFee)}
+             {shippingFee === null 
+               ? "A calcular" 
+               : shippingFee === 0 
+                  ? "Grátis" 
+                  : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(shippingFee)}
           </span>
         </div>
       </div>
@@ -38,12 +46,12 @@ export function OrderSummary({ subtotal, shippingFee = 0, isValidCart }: OrderSu
         </span>
       </div>
 
-      <ShippingCalculator />
+      <ShippingCalculator onCalculate={(fee) => setShippingFee(fee)} />
 
       <button 
-      disabled={!isValidCart}
+      disabled={!canProceed}
         className={`w-full font-bold py-4 px-4 rounded-md mt-6 flex items-center justify-center gap-2 transition-colors uppercase text-sm tracking-wide
-          ${isValidCart 
+          ${canProceed 
             ? 'bg-green-700 hover:bg-green-800 text-white' 
             : 'bg-gray-400 text-gray-200 cursor-not-allowed' // Visual de botão bloqueado
           }
@@ -53,11 +61,15 @@ export function OrderSummary({ subtotal, shippingFee = 0, isValidCart }: OrderSu
         <ChevronRight size={18} />
       </button>
 
-      {!isValidCart && (
-         <p className="text-[#9A0000] text-xs text-center mt-3 font-medium">
+      {!isValidCart ? (
+         <p className="text-[#9A0000] text-xs text-center mt-3 font-medium animate-pulse">
             Remova ou ajuste os itens indisponíveis para prosseguir.
          </p>
-      )}
+      ) : !hasCalculatedShipping ? (
+         <p className="text-gray-300 text-xs text-center mt-3 font-medium animate-pulse">
+            Calcule o frete para liberar o pagamento.
+         </p>
+      ) : null}
     </div>
   );
 }
