@@ -11,6 +11,7 @@ interface CartItemProps {
     unit_price: number;
     size: string;
     maxStock: number;
+    active: string;
     product: {
       id: number;
       name: string;
@@ -25,6 +26,8 @@ export function CartItemCard({ item }: CartItemProps) {
   const subtotal = item.unit_price * item.quantity;
   const isOutOfStock = item.maxStock === 0;
   const hasLessStockThanRequested = item.quantity > item.maxStock && item.maxStock > 0;
+
+  const isActive = item.active === "ACTIVE";
 
   const maxOptions = item.maxStock > 0 ? item.maxStock : 1;
   const displayOptionsCount = Math.min(maxOptions, 10); 
@@ -77,6 +80,11 @@ export function CartItemCard({ item }: CartItemProps) {
               <AlertCircle size={14} /> Apenas {item.maxStock} em estoque. Atualize a quantidade.
             </p>
           )}
+          {!isActive && (
+            <p className="text-orange-600 text-xs flex items-center gap-1 mt-2">
+              <AlertCircle size={14} /> Este produto foi desativado.
+            </p>
+          )}
         </div>
 
         <div className="flex items-center justify-between mt-4">
@@ -85,8 +93,8 @@ export function CartItemCard({ item }: CartItemProps) {
             <select 
               value={item.quantity > item.maxStock ? item.maxStock : item.quantity} 
               onChange={handleQuantityChange}
-              disabled={isOutOfStock || isPending} 
-              className="border border-gray-300 rounded px-2 py-1 text-sm outline-none focus:border-black disabled:bg-gray-100"
+              disabled={isOutOfStock || isPending|| !isActive} 
+              className="border border-gray-300 rounded px-2 py-1 text-sm outline-none focus:border-black disabled:bg-gray-600"
             >
               {Array.from({ length: displayOptionsCount }, (_, i) => i + 1).map(num => (
                 <option key={num} value={num}>{num}</option>

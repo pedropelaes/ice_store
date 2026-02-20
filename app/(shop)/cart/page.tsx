@@ -14,7 +14,7 @@ async function getCartData(userId: number) {
       cartItems: {
         include: {
           product: {
-            select: { id: true, name: true, image_url: true, items: true }
+            select: { id: true, name: true, image_url: true, active: true,items: true }
           }
         },
         orderBy: { id: 'asc' }
@@ -27,11 +27,13 @@ async function getCartData(userId: number) {
   return cart.cartItems.map(item => {
     const productItem = item.product.items.find(i => i.size === item.size);
     const maxStock = productItem?.quantity || 0;
+    const status = item.product.active;
 
     return {
       ...item,
       unit_price: Number(item.unit_price),
-      maxStock: maxStock 
+      maxStock: maxStock,
+      active: status,
     };
   });
 }
@@ -53,6 +55,12 @@ export default async function CartPage() {
 
   // Calcula subtotal base
   const subtotal = cartItems.reduce((acc, item) => acc + (item.unit_price * item.quantity), 0);
+
+  const hasInvalidItems = cartItems.some(
+    item => item.maxStock === 0 || item.active !== "ACTIVE" || item.quantity > item.maxStock
+  );
+
+  const isValidCart = !hasInvalidItems && cartItems.length > 0;
 
   return (
     <div className="bg-white min-h-screen text-black pb-24">
@@ -88,7 +96,7 @@ export default async function CartPage() {
 
             {/* Resumo do Pedido (Direita) */}
             <div className="w-full lg:w-[400px] flex-shrink-0">
-              <OrderSummary subtotal={subtotal} />
+              <OrderSummary subtotal={subtotal} isValidCart={isValidCart}/>
             </div>
 
           </div>

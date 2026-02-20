@@ -6,9 +6,10 @@ import { ChevronRight } from "lucide-react";
 interface OrderSummaryProps {
   subtotal: number;
   shippingFee?: number;
+  isValidCart: boolean;
 }
 
-export function OrderSummary({ subtotal, shippingFee = 0 }: OrderSummaryProps) {
+export function OrderSummary({ subtotal, shippingFee = 0, isValidCart }: OrderSummaryProps) {
   const total = subtotal + shippingFee;
 
   return (
@@ -39,10 +40,24 @@ export function OrderSummary({ subtotal, shippingFee = 0 }: OrderSummaryProps) {
 
       <ShippingCalculator />
 
-      <button className="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-4 px-4 rounded-md mt-6 flex items-center justify-center gap-2 transition-colors uppercase text-sm tracking-wide">
+      <button 
+      disabled={!isValidCart}
+        className={`w-full font-bold py-4 px-4 rounded-md mt-6 flex items-center justify-center gap-2 transition-colors uppercase text-sm tracking-wide
+          ${isValidCart 
+            ? 'bg-green-700 hover:bg-green-800 text-white' 
+            : 'bg-gray-400 text-gray-200 cursor-not-allowed' // Visual de botão bloqueado
+          }
+        `}
+      >
         Prosseguir com a compra
         <ChevronRight size={18} />
       </button>
+
+      {!isValidCart && (
+         <p className="text-[#9A0000] text-xs text-center mt-3 font-medium">
+            Remova ou ajuste os itens indisponíveis para prosseguir.
+         </p>
+      )}
     </div>
   );
 }

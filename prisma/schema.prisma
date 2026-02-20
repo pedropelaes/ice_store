@@ -141,7 +141,11 @@ model Product {
   created_at      DateTime      @default(now())
   active          ProductStatus @default(PENDING)
   totalStock      Int           @default(0)
-  launched_at     DateTime? 
+  launched_at     DateTime?
+  weight Decimal?
+  length Decimal?
+  width Decimal? 
+  height Decimal? 
 
   // relations
   admin           User          @relation(fields: [created_by], references: [id])
