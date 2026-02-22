@@ -104,8 +104,14 @@ model CartItem {
 
 model Address {
   id              Int           @id @default(autoincrement())
+
+  recipient_name  String        
+  phone           String        
+
   street          String
   number          String
+  complement      String?
+  neighborhood    String
   city            String
   state           String
   zip_code        String

@@ -79,21 +79,29 @@ export async function calculateShipping(destinationCep: string) {
     }
 
     // 4. O Melhor Envio retorna um array com várias transportadoras (Correios PAC, Sedex, Jadlog, etc).
-    // Para simplificar agora, vamos pegar a opção mais barata que não tenha erro.
     const validOptions = data.filter((option: any) => !option.error);
     
     if (validOptions.length === 0) {
         return { success: false, error: "Nenhuma transportadora atende este CEP." };
     }
 
-    // Ordena pelo menor preço
-    const cheapestOption = validOptions.sort((a: any, b: any) => Number(a.price) - Number(b.price))[0];
+    const sortedOptions = validOptions.sort((a: any, b: any) => Number(a.price) - Number(b.price));
+    const cheapestOption = sortedOptions[0];
+
+    const allOptions = sortedOptions.map((opt: any) => ({
+        id: opt.id,
+        company: opt.company.name, 
+        method: opt.name,          
+        price: Number(opt.price),
+        delivery_time: opt.delivery_time
+    }));
 
     return { 
         success: true, 
         price: Number(cheapestOption.price),
         delivery_time: cheapestOption.delivery_time, 
-        company: cheapestOption.company.name 
+        company: cheapestOption.company.name,
+        options: allOptions 
     };
 
   } catch (error) {
