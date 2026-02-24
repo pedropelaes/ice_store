@@ -1,7 +1,7 @@
 "use client"
 
 import { CartItemType, CheckoutProvider, useCheckout } from "@/app/context/CheckoutContext";
-import { Lock, Truck, CreditCard, ShoppingCart, MapPin } from "lucide-react";
+import { Lock, Truck, CreditCard, ShoppingCart, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { AddressForm } from "../components/checkout/AdressForm";
 import { ShippingOption, ShippingOptions } from "../components/checkout/ShippingOptions";
@@ -13,6 +13,7 @@ import { getUserAddresses } from "../actions/adress";
 import { addressSchema } from "../lib/validators/address";
 import { AddressStep } from "../components/checkout/AddressStep";
 import { cpf } from "cpf-cnpj-validator";
+import { createOrderAndReserveStock } from "../actions/payment";
 
 function CheckoutStepper() {
   const { currentStep, setCurrentStep } = useCheckout();
@@ -98,7 +99,13 @@ function CheckoutSummary() {
       total,
       pixDiscount,
       finalTotal,
+      cartItems,
+      pixData, setPixData
     } = useCheckout();
+
+    const [isLoading, setIsLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [orderId, setOrderId] = useState<number | null>(null); 
 
     const addressValidation = addressSchema.safeParse(deliveryData);
     const isAddressValid = addressValidation.success;
@@ -162,23 +169,68 @@ function CheckoutSummary() {
                 </div>
             ) : (
                 <button 
-                    disabled={(currentStep === 1 && !canProceedFromStep1) || (currentStep === 2 && !canProceedFromStep2)}
-                    onClick={() => {
-                        if (currentStep === 1) setCurrentStep(2);
-                        
-                        if (currentStep === 2) {
-                            if (paymentMethod === 'PIX') {
-                                // Para pix, gera QR Code e passa para a proxima pagina
-                                console.log("Gerando PIX na API..."); 
-                                setCurrentStep(3);
-                            } else {
-                                setCurrentStep(3); 
-                            }
+                    disabled={(currentStep === 1 && !canProceedFromStep1) || (currentStep === 2 && !canProceedFromStep2) || isLoading}
+                    onClick={async () => {
+                        setErrorMsg(null); 
+
+                        if (currentStep === 1) {
+                            setCurrentStep(2);
+                            return;
                         }
 
+                        if (currentStep === 2) {
+                            setIsLoading(true);
+                            try {
+                                const formattedItems = cartItems.map((item) => ({
+                                    productId: Number(item.product.id),
+                                    size: item.size as any, 
+                                    quantity: item.quantity
+                                }));
+
+                                const payerData = {
+                                    firstName: deliveryData.recipientName.split(" ")[0] || "Nome",
+                                    lastName: deliveryData.recipientName.split(" ").slice(1).join(" ") || "Sobrenome",
+                                    cpf: deliveryData.cpf
+                                };
+
+                                const response = await createOrderAndReserveStock({
+                                    cartItems: formattedItems,
+                                    paymentMethod,
+                                    payer: payerData,
+                                    shippingFee
+                                });
+
+                                if (response.success && response.orderId) {
+                                    setOrderId(response.orderId);
+                                    
+                                    if (paymentMethod === 'PIX' && response.pixData) {
+                                        setPixData(response.pixData); // Guarda o QR Code
+                                    }
+                                    setCurrentStep(3); // Avança para a etapa de Confirmação
+                                } else {
+                                    setErrorMsg(response.error || "Ocorreu um erro ao criar o pedido.");
+                                }
+                            } catch (error) {
+                                console.error("Erro no fluxo:", error);
+                                setErrorMsg("Erro de comunicação com o servidor.");
+                            } finally {
+                                setIsLoading(false);
+                            }
+                            return;
+                        }
+
+                        // --- NA ETAPA 3 (FINALIZAR PAGAMENTO CARTÃO) ---
                         if (currentStep === 3 && paymentMethod === 'CREDIT_CARD') {
-                            console.log("Processando Cartão e Salvando no Banco...");
-                            // Redirecionaria para uma página de sucesso `/checkout/success`
+                            setIsLoading(true);
+                            try {
+                                console.log("Processando Cartão e Salvando no Banco...", { orderId });
+                                // Aqui vai a lógica futura de gerar o Token do MP e chamar o processCardPayment
+                                // Se der certo: window.location.href = `/checkout/success?order=${orderId}`
+                            } catch (err) {
+                                setErrorMsg("Falha ao processar o cartão com a operadora.");
+                            } finally {
+                                setIsLoading(false);
+                            }
                         }
                     }}
                     className={`w-full font-bold py-4 rounded-md transition-colors flex justify-center items-center gap-2 mt-6
@@ -190,9 +242,23 @@ function CheckoutSummary() {
                         }
                     `}
                 >
-                    {currentStep === 1 ? "Prosseguir para o pagamento" : currentStep === 2 ? "Ir para revisão" : "Finalizar pedido"}
-                    <span className="text-xl leading-none mb-1">›</span>
+                    {isLoading ? (
+                        <span className="flex items-center gap-2">
+                            Processando... <Loader2 className="w-5 h-5 animate-spin" />
+                        </span>
+                    ) : (
+                        <>
+                            {currentStep === 1 ? "Prosseguir para o pagamento" : currentStep === 2 ? "Ir para revisão" : "Finalizar pedido"}
+                            <span className="text-xl leading-none mb-1">›</span>
+                        </>
+                    )}
                 </button>
+            )}
+
+            {errorMsg && (
+                <div className="bg-red-100 text-red-700 text-sm p-3 rounded-md mt-4 font-medium animate-in fade-in">
+                    {errorMsg}
+                </div>
             )}
 
             {currentStep === 1 && !canProceedFromStep1 && (

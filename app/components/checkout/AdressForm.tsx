@@ -1,7 +1,7 @@
 "use client"
 
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatCPF, formatNumbersOnly } from "@/app/lib/formaters/formaters"; // Ajuste o caminho se necessário
 import { cpf } from "cpf-cnpj-validator";
 
@@ -30,6 +30,16 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
 
   const [cepError, setCepError] = useState(false);
   const hasCPFError = data.cpf.length === 14 && !cpf.isValid(data.cpf);
+
+  useEffect(() => {
+    if (data.cep && data.cep.replace(/\D/g, "").length === 8 && !data.street) {
+      const mockEvent = {
+        target: { value: data.cep }
+      } as React.ChangeEvent<HTMLInputElement>;
+      
+      handleCepChange(mockEvent);
+    }
+  }, []);
 
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = formatNumbersOnly(e.target.value); 

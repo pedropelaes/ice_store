@@ -12,7 +12,8 @@ export function ConfirmationStep() {
     sameAsDelivery, 
     paymentMethod, 
     cardData,
-    shippingFee
+    shippingFee,
+    pixData
   } = useCheckout();
 
   const formatAddress = (data: typeof deliveryData) => {
@@ -30,11 +31,16 @@ export function ConfirmationStep() {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-black">
       
-      {paymentMethod === 'PIX' && (
+      {paymentMethod === 'PIX' && pixData ? (
         <PixQRCodeDisplay 
-          qrCodeText="00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-426655440000" 
+          qrCodeText={pixData.qrCode} 
+          qrCodeBase64={pixData.qrCodeBase64} 
         />
-      )}
+      ) : paymentMethod === 'PIX' && !pixData ? (
+        <div className="flex justify-center p-8">
+            <p className="text-gray-500 animate-pulse">Gerando QR Code...</p>
+        </div>
+      ) : null}
 
       <OrderItemsReview />
 

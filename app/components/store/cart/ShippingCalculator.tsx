@@ -5,7 +5,7 @@ import { Loader2, Truck } from "lucide-react";
 import { useState, useTransition } from "react";
 
 interface ShippingCalculatorProps {
-  onCalculate?: (fee: number | null) => void;
+  onCalculate?: (fee: number | null, cep?: string) => void;
 }
 
 export function ShippingCalculator({onCalculate}: ShippingCalculatorProps) {
@@ -37,7 +37,7 @@ export function ShippingCalculator({onCalculate}: ShippingCalculatorProps) {
           company: res.company
         });
         
-        if (onCalculate) onCalculate(res.price);
+        if (onCalculate) onCalculate(res.price, cep);
       } else {
         // Mostra o erro e zera o frete no Total
         setError(res.error || "Erro ao consultar transportadora.");

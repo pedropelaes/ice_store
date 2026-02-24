@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ShippingCalculator } from "./ShippingCalculator";
 import { ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface OrderSummaryProps {
   subtotal: number;
@@ -10,11 +11,20 @@ interface OrderSummaryProps {
 }
 
 export function OrderSummary({ subtotal, isValidCart }: OrderSummaryProps) {
+  const router = useRouter();
+
   const [shippingFee, setShippingFee] = useState<number | null>(null);
+  const [calculatedCep, setCalculatedCep] = useState<string>("");
   const total = subtotal + (shippingFee || 0);
 
   const hasCalculatedShipping = shippingFee !== null;
   const canProceed = isValidCart && hasCalculatedShipping;
+
+  const handleProceedToCheckout = () => {
+    if (!canProceed) return;
+
+    router.push(`/checkout?cep=${calculatedCep}&fee=${shippingFee}`);
+  }
 
   return (
     <div className="bg-[#999999] text-white p-6 rounded-xl shadow-sm sticky top-24">
@@ -46,10 +56,14 @@ export function OrderSummary({ subtotal, isValidCart }: OrderSummaryProps) {
         </span>
       </div>
 
-      <ShippingCalculator onCalculate={(fee) => setShippingFee(fee)} />
+      <ShippingCalculator onCalculate={(fee, cepParam) => {
+           setShippingFee(fee);
+           if (cepParam) setCalculatedCep(cepParam); // Salva o CEP digitado
+        }} />
 
       <button 
-      disabled={!canProceed}
+        disabled={!canProceed}
+        onClick={handleProceedToCheckout}
         className={`w-full font-bold py-4 px-4 rounded-md mt-6 flex items-center justify-center gap-2 transition-colors uppercase text-sm tracking-wide
           ${canProceed 
             ? 'bg-green-700 hover:bg-green-800 text-white' 

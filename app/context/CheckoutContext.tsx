@@ -1,5 +1,6 @@
 "use client"
 
+import { useSearchParams } from "next/navigation";
 import { createContext, useContext, useState, ReactNode } from "react";
 
 export type PaymentMethodType = 'PIX' | 'CREDIT_CARD';
@@ -37,6 +38,12 @@ export interface CartItemType {
     name: string;
     image_url: string;
   };
+}
+
+export interface PixDataType {
+  qrCode: string;
+  qrCodeBase64: string;
+  paymentId?: number | string;
 }
 
 interface CheckoutContextType {
@@ -78,6 +85,9 @@ interface CheckoutContextType {
   total: number;
   pixDiscount: number;
   finalTotal: number;
+
+  pixData: PixDataType | null;
+  setPixData: React.Dispatch<React.SetStateAction<PixDataType | null>>;
 }
 
 const CheckoutContext = createContext<CheckoutContextType | undefined>(undefined);
@@ -88,14 +98,17 @@ interface CheckoutProviderProps {
 }
 
 export function CheckoutProvider({ children, initialCartItems }: CheckoutProviderProps) {
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
+  const initialCep = searchParams.get("cep") || "";
+  const initialFee = searchParams.get("fee") ? Number(searchParams.get("fee")) : 0;
   
   // envio
   const [deliveryData, setDeliveryData] = useState<DeliveryData>({
-    cep: "", street: "", number: "", complement: "",
+    cep: initialCep, street: "", number: "", complement: "",
     neighborhood: "", city: "", state: "", recipientName: "", phone: "", cpf: ""
   });
-  const [shippingFee, setShippingFee] = useState<number>(0);
+  const [shippingFee, setShippingFee] = useState<number>(initialFee);
   const [saveAddress, setSaveAddress] = useState(false);
 
   // pagamento
@@ -111,6 +124,7 @@ export function CheckoutProvider({ children, initialCartItems }: CheckoutProvide
   const [saveBillingAddress, setSaveBillingAddress] = useState(false);
   const [savePaymentMethod, setSavePaymentMethod] = useState(false);
   const [savedCardId, setSavedCardId] = useState<number | null>(null);
+  const [pixData, setPixData] = useState<PixDataType | null>(null);
 
   // calculos
   const subtotal = initialCartItems.reduce((acc, item) => {
@@ -141,7 +155,8 @@ export function CheckoutProvider({ children, initialCartItems }: CheckoutProvide
         subtotal,
         total,
         pixDiscount,
-        finalTotal
+        finalTotal,
+        pixData, setPixData,
       }}
     >
       {children}
