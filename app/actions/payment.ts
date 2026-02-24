@@ -6,6 +6,7 @@ import { authOptions } from "@/app/lib/auth";
 import { randomUUID } from "crypto";
 import MercadoPagoConfig, { Payment } from "mercadopago";
 import { Size } from "../generated/prisma";
+import { calculateShipping } from "./shipping";
 
 export async function getUserPaymentMethods() {
     try {
@@ -31,7 +32,7 @@ export async function getUserPaymentMethods() {
 }
 
 function getPaymentInstance() {
-    const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
+    const token = process.env.MP_ACCESS_TOKEN;
     if (!token) throw new Error("MERCADOPAGO_ACCESS_TOKEN não definido.");
     
     const client = new MercadoPagoConfig({ 
@@ -54,10 +55,16 @@ interface PixPaymentParams {
     orderId: string;
 }
 
-interface CardPaymentParams extends PixPaymentParams {
+interface CardPaymentParams {
     token: string;
     installments: number;
     paymentMethodId: string;
+    payer: {
+        firstName: string;
+        lastName: string;
+        cpf: string;
+    };
+    orderId: string;
 }
 
 export async function processPixPayment({ amount, payer, orderId }: PixPaymentParams) {
@@ -100,25 +107,36 @@ export async function processPixPayment({ amount, payer, orderId }: PixPaymentPa
 
     } catch (error) {
         console.error("[MP_PIX_ERROR] Falha ao gerar PIX:", error);
-        return { success: false, error: "Não foi possível gerar o código PIX. Tente novamente." };
+        throw new Error("Não foi possível gerar o código PIX. Tente novamente.");
     }
 }
 
-export async function processCardPayment({ amount, token, installments, paymentMethodId, payer, orderId }: CardPaymentParams) {
+export async function processCardPayment({ token, installments, paymentMethodId, payer, orderId }: CardPaymentParams) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.email) throw new Error("Usuário não autenticado.");
+
         const idempotencyKey = randomUUID();
         const payment = getPaymentInstance();
 
+        const order = await prisma.order.findUnique({
+            where: { id: Number(orderId) }
+        });
+
+        if (!order) {
+            throw new Error("Pedido não encontrado no sistema.");
+        }
+
         const response = await payment.create({
             body: {
-                transaction_amount: Number(amount.toFixed(2)),
+                transaction_amount: Number(order.total_final),
                 token: token,
                 description: `Pedido #${orderId} - Ice Store`,
                 installments: installments,
                 payment_method_id: paymentMethodId,
                 payer: {
-                    email: payer.email,
-                    first_name: payer.firstName,
+                    email: session.user.email, // Seguro, vem da sessão
+                    first_name: payer.firstName, // Pode ser do titular do cartão
                     last_name: payer.lastName,
                     identification: {
                         type: 'CPF',
@@ -133,7 +151,8 @@ export async function processCardPayment({ amount, token, installments, paymentM
             }
         });
 
-        return { 
+        return {
+            success: true, 
             paymentId: response.id, 
             status: response.status,               
             statusDetail: response.status_detail,
@@ -155,7 +174,7 @@ export async function createOrderAndReserveStock(data: {
     cartItems: CheckoutItem[],
     paymentMethod: 'PIX' | 'CREDIT_CARD',
     payer: any, 
-    shippingFee: number
+    cep: string,
 }) {
     try {
         const session = await getServerSession(authOptions);
@@ -220,7 +239,11 @@ export async function createOrderAndReserveStock(data: {
             }
 
             // 2.2 Calcular Gross e Final (conforme schema)
-            const totalGross = backendSubtotal + data.shippingFee;
+            const validShippingFee = await calculateShipping(data.cep);
+            if(validShippingFee.price === undefined){
+                throw new Error("Falha ao calcular o total");
+            }
+            const totalGross = backendSubtotal + validShippingFee.price;
             let totalFinal = totalGross;
 
             if (data.paymentMethod === 'PIX') {

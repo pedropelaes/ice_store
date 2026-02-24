@@ -3,17 +3,15 @@
 import { CartItemType, CheckoutProvider, useCheckout } from "@/app/context/CheckoutContext";
 import { Lock, Truck, CreditCard, ShoppingCart, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { AddressForm } from "../components/checkout/AdressForm";
-import { ShippingOption, ShippingOptions } from "../components/checkout/ShippingOptions";
 import { PaymentStep } from "../components/checkout/PaymentStep";
 import { ConfirmationStep } from "../components/checkout/ConfirmationStep";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { isValidCreditCardNumber, isValidExpiryDate } from "../lib/formaters/formaters";
-import { getUserAddresses } from "../actions/adress";
 import { addressSchema } from "../lib/validators/address";
 import { AddressStep } from "../components/checkout/AddressStep";
 import { cpf } from "cpf-cnpj-validator";
-import { createOrderAndReserveStock } from "../actions/payment";
+import { createOrderAndReserveStock, processCardPayment } from "../actions/payment";
+import Script from "next/script";
 
 function CheckoutStepper() {
   const { currentStep, setCurrentStep } = useCheckout();
@@ -177,27 +175,26 @@ function CheckoutSummary() {
                             setCurrentStep(2);
                             return;
                         }
+                        const formattedItems = cartItems.map((item) => ({
+                            productId: Number(item.product.id),
+                            size: item.size as any, 
+                            quantity: item.quantity
+                        }));
+
+                        const payerData = {
+                            firstName: deliveryData.recipientName.split(" ")[0] || "Nome",
+                            lastName: deliveryData.recipientName.split(" ").slice(1).join(" ") || "Sobrenome",
+                            cpf: deliveryData.cpf
+                        };
 
                         if (currentStep === 2) {
                             setIsLoading(true);
                             try {
-                                const formattedItems = cartItems.map((item) => ({
-                                    productId: Number(item.product.id),
-                                    size: item.size as any, 
-                                    quantity: item.quantity
-                                }));
-
-                                const payerData = {
-                                    firstName: deliveryData.recipientName.split(" ")[0] || "Nome",
-                                    lastName: deliveryData.recipientName.split(" ").slice(1).join(" ") || "Sobrenome",
-                                    cpf: deliveryData.cpf
-                                };
-
                                 const response = await createOrderAndReserveStock({
                                     cartItems: formattedItems,
                                     paymentMethod,
                                     payer: payerData,
-                                    shippingFee
+                                    cep: deliveryData.cep,
                                 });
 
                                 if (response.success && response.orderId) {
@@ -223,10 +220,53 @@ function CheckoutSummary() {
                         if (currentStep === 3 && paymentMethod === 'CREDIT_CARD') {
                             setIsLoading(true);
                             try {
-                                console.log("Processando Cartão e Salvando no Banco...", { orderId });
-                                // Aqui vai a lógica futura de gerar o Token do MP e chamar o processCardPayment
-                                // Se der certo: window.location.href = `/checkout/success?order=${orderId}`
+                                const mp = new (window as any).MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+
+                                const [month, year] = cardData.expiry.split('/');
+                                
+                                const tokenResponse = await mp.createCardToken({
+                                    cardNumber: cardData.number.replace(/\D/g, ''),
+                                    cardholderName: cardData.name,
+                                    cardExpirationMonth: month,
+                                    cardExpirationYear: `20${year}`,
+                                    securityCode: cardData.cvv,
+                                    identificationType: 'CPF',
+                                    identificationNumber: payerData.cpf.replace(/\D/g, '')
+                                });
+
+                                if (!tokenResponse || !tokenResponse.id) {
+                                    throw new Error("Dados do cartão inválidos. Verifique as informações.");
+                                }
+
+                                const safeToken = tokenResponse.id;
+
+                                const bin = cardData.number.replace(/\D/g, '').substring(0, 6);
+                                const paymentMethods = await mp.getPaymentMethods({ bin: bin });
+                                if (!paymentMethods || paymentMethods.results.length === 0) {
+                                    throw new Error("Não foi possível identificar a bandeira do cartão.");
+                                }
+
+                                const fetchedPaymentMethodId = paymentMethods.results[0].id;
+
+                                if( !orderId){
+                                    throw new Error("Erro ao obter ID do pedido");
+                                }
+                                const response = await processCardPayment({
+                                    token: safeToken,
+                                    installments: Number(cardData.installments || 1),
+                                    paymentMethodId: fetchedPaymentMethodId,
+                                    payer: payerData,
+                                    orderId: orderId.toString(),
+                                });
+
+                                if (response.success && response.status === 'approved') {
+                                    window.location.href = `/checkout/success?order=${orderId}`;
+                                } else {
+                                    setErrorMsg(`Pagamento recusado: ${response.statusDetail || 'Verifique com sua operadora.'}`);
+                                }
+
                             } catch (err) {
+                                console.log(err)
                                 setErrorMsg("Falha ao processar o cartão com a operadora.");
                             } finally {
                                 setIsLoading(false);
@@ -312,6 +352,8 @@ export default function CheckoutClient({ initialCartItems }: CheckoutClientProps
   return (
     // Passamos os itens que vieram do servidor para alimentar a "Nuvem"
     <CheckoutProvider initialCartItems={initialCartItems}>
+        <Script src="https://sdk.mercadopago.com/js/v2" strategy="beforeInteractive" />
+
       <div className="min-h-screen bg-white text-black">
         
         <header className="bg-[#999999] text-white py-4 px-8 relative flex items-center h-16">

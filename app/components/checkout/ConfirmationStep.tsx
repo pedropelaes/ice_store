@@ -13,7 +13,8 @@ export function ConfirmationStep() {
     paymentMethod, 
     cardData,
     shippingFee,
-    pixData
+    pixData,
+    cartItems,
   } = useCheckout();
 
   const formatAddress = (data: typeof deliveryData) => {
@@ -42,7 +43,7 @@ export function ConfirmationStep() {
         </div>
       ) : null}
 
-      <OrderItemsReview />
+      <OrderItemsReview cartItems={cartItems}/>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="flex flex-col gap-6">
