@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { formatCPF, formatNumbersOnly } from "@/app/lib/formaters/formaters"; // Ajuste o caminho se necessário
+import { cpf } from "cpf-cnpj-validator";
 
 export interface AddressData {
   cep: string;
@@ -27,7 +28,8 @@ interface AddressFormProps {
 export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }: AddressFormProps) {
   const [isLoadingCep, setIsLoadingCep] = useState(false);
 
-  // --- MÁSCARAS DE INPUT REUTILIZANDO SUAS FUNÇÕES ---
+  const [cepError, setCepError] = useState(false);
+  const hasCPFError = data.cpf.length === 14 && !cpf.isValid(data.cpf);
 
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = formatNumbersOnly(e.target.value); 
@@ -42,7 +44,14 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
         const res = await fetch(`https://viacep.com.br/ws/${value.replace(/\D/g, "")}/json/`);
         const viaCepData = await res.json();
         
-        if (!viaCepData.erro) {
+        if (viaCepData.erro) {
+          setCepError(true);
+          onChange("street", "");
+          onChange("neighborhood", "");
+          onChange("city", "");
+          onChange("state", "");
+        } else {
+          setCepError(false);
           onChange("street", viaCepData.logradouro);
           onChange("neighborhood", viaCepData.bairro);
           onChange("city", viaCepData.localidade);
@@ -68,6 +77,11 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
     onChange("phone", value);
   };
 
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.toUpperCase().replace(/[^A-Z0-9/-]/g, '');
+    onChange("number", value);
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 text-black w-full">
       
@@ -80,9 +94,16 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
           onChange={handleCepChange} 
           maxLength={9}
           placeholder="Ex: 00000-000"
-          className="input-custom w-full"
+          className={`input-custom w-full transition-colors ${
+            cepError ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50' : ''
+          }`}
         />
         {isLoadingCep && <Loader2 size={16} className="absolute right-3 top-9 animate-spin text-gray-400" />}
+        {cepError && (
+          <span className="text-xs text-red-500 mt-1 block font-medium animate-in fade-in">
+            CEP não encontrado
+          </span>
+        )}
       </div>
       <div className="hidden md:block md:col-span-7"></div> {/* Espaço vazio para alinhar à esquerda */}
 
@@ -94,17 +115,19 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
           value={data.street} 
           onChange={(e) => onChange("street", e.target.value)} 
           placeholder="Ex: Rua Monte Alto"
-          className="input-custom w-full bg-gray-50/50" // Mantemos o bg leve para indicar que é auto-preenchido
+          disabled={cepError} 
+          className={`input-custom w-full ${cepError ? 'bg-gray-200 cursor-not-allowed opacity-60' : 'bg-gray-50/50'}`}
         />
       </div>
       <div className="md:col-span-4">
         <label className="block text-sm font-medium mb-1">Número *</label>
         <input 
-          type="text" 
+          type="text"
           value={data.number} 
-          onChange={(e) => onChange("number", e.target.value)} 
+          onChange={handleNumberChange} 
           placeholder="XXX"
-          className="input-custom w-full"
+          disabled={cepError} 
+          className={`input-custom w-full ${cepError ? 'bg-gray-200 cursor-not-allowed opacity-60' : 'bg-gray-50/50'}`}
         />
       </div>
 
@@ -116,7 +139,8 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
           value={data.complement} 
           onChange={(e) => onChange("complement", e.target.value)} 
           placeholder="Ex: Apto 42, Casa azul"
-          className="input-custom w-full"
+          disabled={cepError} 
+          className={`input-custom w-full ${cepError ? 'bg-gray-200 cursor-not-allowed opacity-60' : 'bg-gray-50/50'}`}
         />
       </div>
       <div className="md:col-span-6">
@@ -126,7 +150,8 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
           value={data.neighborhood} 
           onChange={(e) => onChange("neighborhood", e.target.value)} 
           placeholder="Seu bairro"
-          className="input-custom w-full bg-gray-50/50"
+          disabled={cepError} 
+          className={`input-custom w-full ${cepError ? 'bg-gray-200 cursor-not-allowed opacity-60' : 'bg-gray-50/50'}`}
         />
       </div>
 
@@ -138,7 +163,8 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
           value={data.city} 
           onChange={(e) => onChange("city", e.target.value)} 
           placeholder="Sua cidade"
-          className="input-custom w-full bg-gray-50/50"
+          disabled={cepError} 
+          className={`input-custom w-full ${cepError ? 'bg-gray-200 cursor-not-allowed opacity-60' : 'bg-gray-50/50'}`}
         />
       </div>
       <div className="md:col-span-6">
@@ -149,7 +175,8 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
           onChange={(e) => onChange("state", e.target.value)} 
           placeholder="UF"
           maxLength={2}
-          className="input-custom w-full bg-gray-50/50 uppercase"
+          disabled={cepError} 
+          className={`input-custom w-full ${cepError ? 'bg-gray-200 cursor-not-allowed opacity-60' : 'bg-gray-50/50'}`}
         />
       </div>
 
@@ -169,14 +196,20 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
 
       {/* LINHA 6: CPF e Telefone (Metade / Metade) */}
       <div className="md:col-span-6">
-        <label className="block text-sm font-medium mb-1">CPF do Comprador *</label>
+        <label className={`block text-sm font-medium mb-1`}
+        >CPF do Comprador *</label>
         <input 
           type="text" 
           value={data.cpf} 
           onChange={handleCpfChange} 
           placeholder="000.000.000-00"
-          className="input-custom w-full"
+          className={`input-custom w-full ${hasCPFError
+            ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50' 
+            : ''}`}
         />
+        {hasCPFError && (
+          <span className="text-xs text-red-500 mt-1 block font-medium animate-in fade-in">Digite um CPF válido</span>
+        )}
       </div>
       <div className="md:col-span-6">
         <label className="block text-sm font-medium mb-1">Telefone / WhatsApp *</label>

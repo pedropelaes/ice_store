@@ -7,7 +7,7 @@ import { OrderSummary } from "@/app/components/store/cart/OrderSummary";
 import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
 
-async function getCartData(userId: number) {
+export async function getCartData(userId: number) {
   const cart = await prisma.cart.findUnique({
     where: { user_id: userId },
     include: {
