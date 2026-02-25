@@ -7,6 +7,8 @@ import { randomUUID } from "crypto";
 import MercadoPagoConfig, { Payment } from "mercadopago";
 import { Size } from "../generated/prisma";
 import { calculateShipping } from "./shipping";
+import { sendReceiptEmail } from "../services/mail";
+import { DeliveryData } from "../context/CheckoutContext";
 
 export async function getUserPaymentMethods() {
     try {
@@ -174,7 +176,7 @@ export async function createOrderAndReserveStock(data: {
     cartItems: CheckoutItem[],
     paymentMethod: 'PIX' | 'CREDIT_CARD',
     payer: any, 
-    cep: string,
+    addressData: DeliveryData
 }) {
     try {
         const session = await getServerSession(authOptions);
@@ -239,7 +241,7 @@ export async function createOrderAndReserveStock(data: {
             }
 
             // 2.2 Calcular Gross e Final (conforme schema)
-            const validShippingFee = await calculateShipping(data.cep);
+            const validShippingFee = await calculateShipping(data.addressData.cep);
             if(validShippingFee.price === undefined){
                 throw new Error("Falha ao calcular o total");
             }
@@ -257,6 +259,18 @@ export async function createOrderAndReserveStock(data: {
                     total_gross: totalGross,
                     total_final: totalFinal,
                     status: 'PENDING',
+                    shipping: {
+                        create: {
+                            recipient: data.addressData.recipientName,
+                            street: data.addressData.street,
+                            number: data.addressData.number,
+                            complement: data.addressData.complement,
+                            neighborhood: data.addressData.neighborhood,
+                            city: data.addressData.city,
+                            state: data.addressData.state,
+                            zipCode: data.addressData.cep,
+                        }
+                        },
                     orderItems: {
                         create: orderItemsData
                     }
@@ -291,3 +305,55 @@ export async function createOrderAndReserveStock(data: {
         return { success: false, error: error.message || "Erro ao processar o pedido." };
     }
 }
+
+export async function changeOrderStatus(approved: boolean, orderId: number) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { client: true }
+  });
+
+  if (!order || order.status !== 'PENDING') {
+    return; 
+  }
+
+  const updatedOrder = await prisma.order.update({
+    where: { id: orderId },
+    data: { 
+      status: approved ? 'PAID' : 'CANCELED' 
+    },
+    include: { client: true } 
+  });
+
+  if (approved && updatedOrder.client) {
+    sendReceiptEmail(
+      updatedOrder.client.email,
+      updatedOrder.client.name,
+      updatedOrder.id
+    ).catch(console.error);
+  }
+
+  return updatedOrder;
+}
+
+export async function verifyPaymentStatus(paymentId: number, orderId: number) {
+    try {
+        const payment = getPaymentInstance();
+        
+        const paymentInfo = await payment.get({ id: paymentId });
+
+        if (paymentInfo.status === 'approved') {
+            await prisma.order.update({
+                where: { id: orderId },
+                data: { status: 'PAID' }
+            });
+            return { approved: true };
+        }
+        
+        return { approved: false };
+    } catch (error) {
+        console.error("Erro ao verificar status do PIX:", error);
+        return { approved: false };
+    }
+}
+
+

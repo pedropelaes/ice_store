@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import prisma from "@/app/lib/prisma"
 import { generateVerificationToken } from "@/app/lib/tokens"
-import { sendVerificationEmail } from "@/app/lib/validators/mail"
+import { sendVerificationEmail } from "@/app/services/mail"
 
 export async function POST(req: Request) {
     const { email } = await req.json()

@@ -5,12 +5,12 @@ import { Lock, Truck, CreditCard, ShoppingCart, MapPin, Loader2 } from "lucide-r
 import Link from "next/link";
 import { PaymentStep } from "../components/checkout/PaymentStep";
 import { ConfirmationStep } from "../components/checkout/ConfirmationStep";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { isValidCreditCardNumber, isValidExpiryDate } from "../lib/formaters/formaters";
 import { addressSchema } from "../lib/validators/address";
 import { AddressStep } from "../components/checkout/AddressStep";
 import { cpf } from "cpf-cnpj-validator";
-import { createOrderAndReserveStock, processCardPayment } from "../actions/payment";
+import { createOrderAndReserveStock, processCardPayment, verifyPaymentStatus } from "../actions/payment";
 import Script from "next/script";
 
 function CheckoutStepper() {
@@ -132,6 +132,25 @@ function CheckoutSummary() {
     const canProceedFromStep1 = isAddressValid && isCpfValid && shippingFee > 0;
     const canProceedFromStep2 = isPaymentValid();
 
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (currentStep === 3 && paymentMethod === 'PIX' && pixData?.paymentId && orderId) {
+            
+            interval = setInterval(async () => {
+                const status = await verifyPaymentStatus(Number(pixData.paymentId), orderId);
+                console.log("Buscando status do pagamento")
+                if (status.approved) {
+                    clearInterval(interval); 
+                    window.location.href = `/checkout/success?order=${orderId}`;
+                }
+            }, 3000);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [currentStep, paymentMethod, pixData, orderId]);
+
     return (
         <div className="bg-[#999999] text-white p-6 rounded-xl sticky top-8">
             <h2 className="text-xl font-bold mb-4">Resumo do pedido:</h2>
@@ -194,7 +213,7 @@ function CheckoutSummary() {
                                     cartItems: formattedItems,
                                     paymentMethod,
                                     payer: payerData,
-                                    cep: deliveryData.cep,
+                                    addressData: deliveryData
                                 });
 
                                 if (response.success && response.orderId) {
@@ -220,6 +239,12 @@ function CheckoutSummary() {
                         if (currentStep === 3 && paymentMethod === 'CREDIT_CARD') {
                             setIsLoading(true);
                             try {
+                                if (typeof (window as any).MercadoPago === 'undefined') {
+                                    setErrorMsg("Conectando com a operadora. Por favor, aguarde 2 segundos e clique novamente.");
+                                    setIsLoading(false);
+                                    return; 
+                                }
+
                                 const mp = new (window as any).MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
 
                                 const [month, year] = cardData.expiry.split('/');
@@ -293,6 +318,7 @@ function CheckoutSummary() {
                         </>
                     )}
                 </button>
+                
             )}
 
             {errorMsg && (
@@ -340,6 +366,18 @@ function CheckoutSummary() {
                     </button>
                 ) : null}
             </div>
+            {process.env.NODE_ENV === 'development' && currentStep===3 && paymentMethod==='PIX' && (
+                <button 
+                    onClick={async () => {
+                        // Força o redirecionamento ignorando o Mercado Pago
+                        window.location.href = `/checkout/success?order=${orderId}`;
+                    }}
+                    className="bg-[#82FF95] text-black font-bold py-2 px-4 rounded-md mt-2 text-xs hover:bg-green-400 transition-colors"
+                >
+                    [DEV] Simular Pagamento PIX
+                </button>
+            )}
+            
         </div>
     )
 }
@@ -352,7 +390,7 @@ export default function CheckoutClient({ initialCartItems }: CheckoutClientProps
   return (
     // Passamos os itens que vieram do servidor para alimentar a "Nuvem"
     <CheckoutProvider initialCartItems={initialCartItems}>
-        <Script src="https://sdk.mercadopago.com/js/v2" strategy="beforeInteractive" />
+        <Script src="https://sdk.mercadopago.com/js/v2" strategy="afterInteractive" />
 
       <div className="min-h-screen bg-white text-black">
         

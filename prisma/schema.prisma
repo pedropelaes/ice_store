@@ -192,6 +192,7 @@ model Order{
   client        User          @relation(fields: [user_id], references: [id])
   user_id       Int
   orderItems    OrderItem[]
+  shipping      ShippingAddress?
 }
 
 model OrderItem {
@@ -205,6 +206,21 @@ model OrderItem {
   order_id      Int 
   product       Product        @relation(fields: [product_id], references: [id])
   product_id    Int     
+}
+
+model ShippingAddress {
+  id          Int     @id @default(autoincrement())
+  orderId     Int     @unique
+  street      String
+  number      String
+  complement  String?
+  neighborhood String
+  city        String
+  state       String
+  zipCode     String
+  recipient   String
+
+  order       Order   @relation(fields: [orderId], references: [id])
 }
 
 model CheckoutSession {
