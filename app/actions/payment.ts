@@ -1,22 +1,21 @@
 "use server"
 
 import prisma from "../lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/lib/auth"; 
 import { randomUUID } from "crypto";
 import MercadoPagoConfig, { Payment } from "mercadopago";
 import { Size } from "../generated/prisma";
 import { calculateShipping } from "./shipping";
 import { sendReceiptEmail } from "../services/mail";
 import { DeliveryData } from "../context/CheckoutContext";
+import { getAuthenticatedUser } from "../lib/get-user";
 
 export async function getUserPaymentMethods() {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.email) return [];
+        const authUser = await getAuthenticatedUser();
+        if(!authUser) return { success: false, error: "Usuário não autenticado ou não encontrado." }
 
         const user = await prisma.user.findUnique({
-            where: { email: session.user.email }
+            where: { email: authUser.email }
         });
 
         if (!user) return [];
@@ -58,15 +57,16 @@ interface PixPaymentParams {
 }
 
 interface CardPaymentParams {
-    token: string;
+    token?: string;
     installments: number;
-    paymentMethodId: string;
+    paymentMethodId?: string;
     payer: {
         firstName: string;
         lastName: string;
         cpf: string;
     };
     orderId: string;
+    savedCardId?: number
 }
 
 export async function processPixPayment({ amount, payer, orderId }: PixPaymentParams) {
@@ -113,10 +113,10 @@ export async function processPixPayment({ amount, payer, orderId }: PixPaymentPa
     }
 }
 
-export async function processCardPayment({ token, installments, paymentMethodId, payer, orderId }: CardPaymentParams) {
+export async function processCardPayment({ token, installments, paymentMethodId, payer, orderId, savedCardId }: CardPaymentParams) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.email) throw new Error("Usuário não autenticado.");
+        const authUser = await getAuthenticatedUser();
+        if(!authUser) return { success: false, error: "Usuário não autenticado ou não encontrado." }
 
         const idempotencyKey = randomUUID();
         const payment = getPaymentInstance();
@@ -129,15 +129,26 @@ export async function processCardPayment({ token, installments, paymentMethodId,
             throw new Error("Pedido não encontrado no sistema.");
         }
 
+        let finalToken = token;
+        let finalPaymentMethodId = paymentMethodId;
+
+        if (savedCardId) {
+            // Em vez de simular aprovação, devolvemos um erro elegante e técnico
+            return {
+                success: false, 
+                error: "⚠️ Ambiente de Demonstração: O uso de cartões salvos requer validação de CVV e arquitetura de 'Customers' no Mercado Pago. Por favor, insira os dados de um cartão de teste para finalizar."
+            };
+        }
+
         const response = await payment.create({
             body: {
                 transaction_amount: Number(order.total_final),
-                token: token,
+                token: finalToken,
                 description: `Pedido #${orderId} - Ice Store`,
                 installments: installments,
-                payment_method_id: paymentMethodId,
+                payment_method_id: finalPaymentMethodId,
                 payer: {
-                    email: session.user.email, // Seguro, vem da sessão
+                    email: authUser.email, // Seguro, vem da sessão
                     first_name: payer.firstName, // Pode ser do titular do cartão
                     last_name: payer.lastName,
                     identification: {
@@ -152,6 +163,7 @@ export async function processCardPayment({ token, installments, paymentMethodId,
                 idempotencyKey: idempotencyKey
             }
         });
+        changeOrderStatus(true, Number(orderId))
 
         return {
             success: true, 
@@ -179,11 +191,11 @@ export async function createOrderAndReserveStock(data: {
     addressData: DeliveryData
 }) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.email) throw new Error("Usuário não autenticado.");
+        const authUser = await getAuthenticatedUser();
+        if(!authUser) return { success: false, error: "Usuário não autenticado ou não encontrado." }
 
         const user = await prisma.user.findUnique({
-            where: { email: session.user.email }
+            where: { email: authUser.email }
         });
 
         if (!user) throw new Error("Usuário não encontrado.");
@@ -282,6 +294,23 @@ export async function createOrderAndReserveStock(data: {
 
         const { order, totalFinal } = result;
 
+        // Uptash para cancelar o pedido se não houver pagamento nos próximos 15 minutos.
+        const qstashBaseUrl = process.env.NODE_ENV === 'development' 
+            ? "http://localhost:8080/v2/publish" 
+            : "https://qstash.upstash.io/v2/publish";
+
+        const endpoint = `${process.env.NEXT_PUBLIC_APP_URL}/api/orders/expire`;
+
+        fetch(`${qstashBaseUrl}/${endpoint}`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${process.env.QSTASH_TOKEN}`,
+                "Content-Type": "application/json",
+                "Upstash-Delay": "15m" 
+            },
+            body: JSON.stringify({ orderId: order.id }),
+        }).catch(err => console.error("Erro ao agendar expiração no QStash:", err));
+
         // 3. SE FOR PIX, GERA O QR CODE AGORA
         if (data.paymentMethod === 'PIX') {
             const pixResult = await processPixPayment({
@@ -298,7 +327,7 @@ export async function createOrderAndReserveStock(data: {
         }
 
         // Se for cartão, retorna o ID do pedido para o frontend gerar o token e processar depois
-        return { success: true, orderId: order.id, amount: totalFinal };
+        return { success: true, orderId: order.id, amount: totalFinal, orderedAt: order.orderedAt };
 
     } catch (error: any) {
         console.error("Erro na criação do pedido:", error);
@@ -309,30 +338,49 @@ export async function createOrderAndReserveStock(data: {
 export async function changeOrderStatus(approved: boolean, orderId: number) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    include: { client: true }
+    include: { client: true, orderItems: true } 
   });
 
-  if (!order || order.status !== 'PENDING') {
-    return; 
+  if (!order || order.status !== 'PENDING') return;
+
+  if (approved) {
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'PAID' },
+      include: { client: true }
+    });
+
+    if (updatedOrder.client) {
+      sendReceiptEmail(updatedOrder.client.email, updatedOrder.client.name, updatedOrder.id).catch(console.error);
+    }
+    return updatedOrder;
+  } else {
+    return await prisma.$transaction(async (tx) => {
+      for (const item of order.orderItems) {
+        // Devolve ao estoque da variação (Size)
+        await tx.productItem.update({
+          where: {
+            product_id_size: {
+              product_id: item.product_id,
+              size: item.size
+            }
+          },
+          data: { quantity: { increment: item.quantity } }
+        });
+
+        // Devolve ao estoque total do produto
+        await tx.product.update({
+          where: { id: item.product_id },
+          data: { totalStock: { increment: item.quantity } }
+        });
+      }
+
+      return await tx.order.update({
+        where: { id: orderId },
+        data: { status: 'CANCELED' }
+      });
+    });
   }
-
-  const updatedOrder = await prisma.order.update({
-    where: { id: orderId },
-    data: { 
-      status: approved ? 'PAID' : 'CANCELED' 
-    },
-    include: { client: true } 
-  });
-
-  if (approved && updatedOrder.client) {
-    sendReceiptEmail(
-      updatedOrder.client.email,
-      updatedOrder.client.name,
-      updatedOrder.id
-    ).catch(console.error);
-  }
-
-  return updatedOrder;
 }
 
 export async function verifyPaymentStatus(paymentId: number, orderId: number) {

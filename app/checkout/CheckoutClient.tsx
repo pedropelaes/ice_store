@@ -10,8 +10,11 @@ import { isValidCreditCardNumber, isValidExpiryDate } from "../lib/formaters/for
 import { addressSchema } from "../lib/validators/address";
 import { AddressStep } from "../components/checkout/AddressStep";
 import { cpf } from "cpf-cnpj-validator";
-import { createOrderAndReserveStock, processCardPayment, verifyPaymentStatus } from "../actions/payment";
+import { changeOrderStatus, createOrderAndReserveStock, processCardPayment, verifyPaymentStatus } from "../actions/payment";
 import Script from "next/script";
+import { cleanCart } from "../actions/cart";
+import { saveUserAddress, saveUserCard } from "../actions/checkout";
+import { getUserAddresses } from "../actions/adress";
 
 function CheckoutStepper() {
   const { currentStep, setCurrentStep } = useCheckout();
@@ -98,7 +101,9 @@ function CheckoutSummary() {
       pixDiscount,
       finalTotal,
       cartItems,
-      pixData, setPixData
+      pixData, setPixData,
+      orderedAt, setOrderedAt,
+      savePaymentMethod, saveAddress
     } = useCheckout();
 
     const [isLoading, setIsLoading] = useState(false);
@@ -191,6 +196,10 @@ function CheckoutSummary() {
                         setErrorMsg(null); 
 
                         if (currentStep === 1) {
+                            if(saveAddress){
+                                saveUserAddress(deliveryData);
+                            }
+
                             setCurrentStep(2);
                             return;
                         }
@@ -222,6 +231,8 @@ function CheckoutSummary() {
                                     if (paymentMethod === 'PIX' && response.pixData) {
                                         setPixData(response.pixData); // Guarda o QR Code
                                     }
+                                    if(!response.orderedAt) setOrderedAt(new Date());
+                                    else setOrderedAt(new Date(response.orderedAt))
                                     setCurrentStep(3); // Avança para a etapa de Confirmação
                                 } else {
                                     setErrorMsg(response.error || "Ocorreu um erro ao criar o pedido.");
@@ -239,55 +250,76 @@ function CheckoutSummary() {
                         if (currentStep === 3 && paymentMethod === 'CREDIT_CARD') {
                             setIsLoading(true);
                             try {
-                                if (typeof (window as any).MercadoPago === 'undefined') {
-                                    setErrorMsg("Conectando com a operadora. Por favor, aguarde 2 segundos e clique novamente.");
-                                    setIsLoading(false);
-                                    return; 
-                                }
-
-                                const mp = new (window as any).MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
-
-                                const [month, year] = cardData.expiry.split('/');
-                                
-                                const tokenResponse = await mp.createCardToken({
-                                    cardNumber: cardData.number.replace(/\D/g, ''),
-                                    cardholderName: cardData.name,
-                                    cardExpirationMonth: month,
-                                    cardExpirationYear: `20${year}`,
-                                    securityCode: cardData.cvv,
-                                    identificationType: 'CPF',
-                                    identificationNumber: payerData.cpf.replace(/\D/g, '')
-                                });
-
-                                if (!tokenResponse || !tokenResponse.id) {
-                                    throw new Error("Dados do cartão inválidos. Verifique as informações.");
-                                }
-
-                                const safeToken = tokenResponse.id;
-
-                                const bin = cardData.number.replace(/\D/g, '').substring(0, 6);
-                                const paymentMethods = await mp.getPaymentMethods({ bin: bin });
-                                if (!paymentMethods || paymentMethods.results.length === 0) {
-                                    throw new Error("Não foi possível identificar a bandeira do cartão.");
-                                }
-
-                                const fetchedPaymentMethodId = paymentMethods.results[0].id;
-
-                                if( !orderId){
+                                if (!orderId) {
                                     throw new Error("Erro ao obter ID do pedido");
                                 }
-                                const response = await processCardPayment({
-                                    token: safeToken,
-                                    installments: Number(cardData.installments || 1),
-                                    paymentMethodId: fetchedPaymentMethodId,
-                                    payer: payerData,
-                                    orderId: orderId.toString(),
-                                });
 
-                                if (response.success && response.status === 'approved') {
+                                let paymentResponse; 
+
+                                if (savedCardId) {
+                                    paymentResponse = await processCardPayment({
+                                        savedCardId: savedCardId,
+                                        installments: Number(cardData.installments || 1),
+                                        payer: payerData,
+                                        orderId: orderId.toString(),
+                                    });
+                                } 
+                                else {
+                                    if (typeof (window as any).MercadoPago === 'undefined') {
+                                        setErrorMsg("Conectando com a operadora. Por favor, aguarde e tente novamente.");
+                                        setIsLoading(false);
+                                        return; 
+                                    }
+
+                                    const mp = new (window as any).MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+                                    const [month, year] = cardData.expiry.split('/');
+                                    
+                                    const tokenResponse = await mp.createCardToken({
+                                        cardNumber: cardData.number.replace(/\D/g, ''),
+                                        cardholderName: cardData.name,
+                                        cardExpirationMonth: month,
+                                        cardExpirationYear: `20${year}`,
+                                        securityCode: cardData.cvv,
+                                        identificationType: 'CPF',
+                                        identificationNumber: payerData.cpf.replace(/\D/g, '')
+                                    });
+
+                                    if (!tokenResponse || !tokenResponse.id) {
+                                        throw new Error("Dados do cartão inválidos. Verifique as informações.");
+                                    }
+
+                                    const safeToken = tokenResponse.id;
+                                    const bin = cardData.number.replace(/\D/g, '').substring(0, 6);
+                                    const paymentMethods = await mp.getPaymentMethods({ bin: bin });
+                                    
+                                    if (!paymentMethods || paymentMethods.results.length === 0) {
+                                        throw new Error("Não foi possível identificar a bandeira do cartão.");
+                                    }
+
+                                    const fetchedPaymentMethodId = paymentMethods.results[0].id;
+
+                                    paymentResponse = await processCardPayment({
+                                        token: safeToken,
+                                        installments: Number(cardData.installments || 1),
+                                        paymentMethodId: fetchedPaymentMethodId,
+                                        payer: payerData,
+                                        orderId: orderId.toString(),
+                                    });
+
+                                    if (paymentResponse.success && savePaymentMethod) {
+                                        await saveUserCard(cardData, safeToken, fetchedPaymentMethodId);
+                                    }
+                                }
+
+                                if (paymentResponse && paymentResponse.success && paymentResponse.status === 'approved') {
+                                    await cleanCart();
                                     window.location.href = `/checkout/success?order=${orderId}`;
                                 } else {
-                                    setErrorMsg(`Pagamento recusado: ${response.statusDetail || 'Verifique com sua operadora.'}`);
+                                    if (paymentResponse?.error) {
+                                        setErrorMsg(paymentResponse.error);
+                                    } else {
+                                        setErrorMsg(`Pagamento recusado: ${paymentResponse?.statusDetail || 'Verifique com sua operadora.'}`);
+                                    }
                                 }
 
                             } catch (err) {
@@ -370,6 +402,8 @@ function CheckoutSummary() {
                 <button 
                     onClick={async () => {
                         // Força o redirecionamento ignorando o Mercado Pago
+                        changeOrderStatus(true, orderId!)
+                        cleanCart();
                         window.location.href = `/checkout/success?order=${orderId}`;
                     }}
                     className="bg-[#82FF95] text-black font-bold py-2 px-4 rounded-md mt-2 text-xs hover:bg-green-400 transition-colors"

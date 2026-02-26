@@ -1,19 +1,21 @@
 "use server"
 
 import prisma from "../lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/lib/auth"; 
 import { MercadoPagoConfig, Payment } from 'mercadopago';
+import { getAuthenticatedUser } from "../lib/get-user";
+import { CardData, DeliveryData } from "../context/CheckoutContext";
+import { boolean } from "zod";
+import { getUserAddresses } from "./adress";
 
 const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN as string });
 const paymentApi = new Payment(mpClient);
 
 export async function processCheckout(payload: any) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.email) return { success: false, error: "Usuário não autenticado." };
+        const authUser = await getAuthenticatedUser();
+        if(!authUser) return { success: false, error: "Usuário não autenticado ou não encontrado." }
 
-        const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+        const user = await prisma.user.findUnique({ where: { email: authUser.email } });
         if (!user) return { success: false, error: "Usuário não encontrado." };
 
         if (payload.saveAddress && !payload.savedAddressId) {
@@ -117,4 +119,92 @@ export async function processCheckout(payload: any) {
         console.error("Erro na Server Action de Checkout:", error);
         return { success: false, error: "Ocorreu um erro ao processar o seu pedido. Tente novamente." };
     }
+}
+
+export async function saveUserAddress(data: DeliveryData) {
+    try {
+    const user = await getAuthenticatedUser();
+    if (!user) return { success: false, error: "Usuário não autenticado." };
+
+    const existingAddress = await prisma.address.findFirst({
+      where: {
+        user_id: user.id,
+        zip_code: data.cep,
+        number: data.number,
+        complement: data.complement || "",
+      }
+    });
+
+    if (existingAddress) {
+      return { success: true, addressId: existingAddress.id };
+    }
+
+    const addressCount = await prisma.address.count({
+      where: { user_id: user.id }
+    });
+
+    const is_default = addressCount === 0;
+
+    const address = await prisma.address.create({
+      data: {
+        user_id: user.id, 
+        zip_code: data.cep,
+        street: data.street,
+        number: data.number,
+        complement: data.complement || "",
+        neighborhood: data.neighborhood,
+        city: data.city,
+        state: data.state,
+        recipient_name: data.recipientName,
+        country: "Brasil",
+        phone: data.phone,
+        is_default: is_default,
+      }
+    });
+
+    return { success: true, addressId: address.id };
+  } catch (error) {
+    console.error("Erro ao salvar endereço:", error);
+    return { success: false, error: "Não foi possível salvar o endereço." };
+  }
+}
+
+export async function saveUserCard(
+  cardData: CardData, 
+  mpToken: string, 
+  brand: string    
+) {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) return { success: false, error: "Usuário não autenticado." };
+
+    const last4Digits = cardData.number.slice(-4);
+
+    const existingCard = await prisma.paymentMethod.findFirst({
+      where: {
+        user_id: user.id,
+        last4: last4Digits,
+        brand: brand
+      }
+    });
+
+    if (existingCard) {
+      return { success: true, paymentMethodId: existingCard.id };
+    }
+
+    const paymentMethod = await prisma.paymentMethod.create({
+      data: {
+        user_id: user.id,
+        token: mpToken,
+        brand: brand,
+        last4: last4Digits,
+        provider: "mercadopago"
+      }
+    });
+
+    return { success: true, paymentMethodId: paymentMethod.id };
+  } catch (error) {
+    console.error("Erro ao salvar cartão:", error);
+    return { success: false, error: "Não foi possível salvar o cartão." };
+  }
 }

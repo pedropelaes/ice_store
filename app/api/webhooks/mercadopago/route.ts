@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/app/lib/prisma";
 import { sendReceiptEmail } from "@/app/services/mail";
-import { MercadoPagoConfig, Payment } from "mercadopago"; // Importe a SDK do backend
+import { MercadoPagoConfig, Payment } from "mercadopago";
 
 export async function POST(req: Request) {
   try {

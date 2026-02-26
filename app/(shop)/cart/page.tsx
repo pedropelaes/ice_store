@@ -6,6 +6,7 @@ import { CartItemCard } from "@/app/components/store/cart/CartItem";
 import { OrderSummary } from "@/app/components/store/cart/OrderSummary";
 import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
+import { cleanCart } from "@/app/actions/cart";
 
 export async function getCartData(userId: number) {
   const cart = await prisma.cart.findUnique({
@@ -67,6 +68,11 @@ export default async function CartPage() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-10">
         
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Carrinho</h1>
+        {cartItems.length > 0 &&
+          <h2 className="xlfont-bold text-red-500 mb-1 underline hover:cursor-pointer"
+            onClick={cleanCart}
+          >Limpar carrinho</h2>
+        }
 
         {cartItems.length === 0 ? (
           // ESTADO VAZIO

@@ -5,21 +5,13 @@ import { Size } from "@/app/generated/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth"; 
 import { authOptions } from "../lib/auth"; 
+import { success } from "zod";
+import { getAuthenticatedUser } from "../lib/get-user";
 
 export async function addToCart(productId: number, size: Size, quantity: number) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session || !session.user?.email) {
-      return { success: false, error: "Você precisa estar logado para adicionar itens." };
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true }
-    });
-
-    if (!user) return { success: false, error: "Usuário não encontrado." };
+    const user = await getAuthenticatedUser();
+    if(!user) return { success: false, error: "Usuário não autenticado ou não encontrado." }
 
     const product = await prisma.product.findUnique({
       where: { id: productId },
@@ -73,7 +65,7 @@ export async function addToCart(productId: number, size: Size, quantity: number)
     });
 
     revalidatePath('/cart');
-    // revalidatePath('/');
+    revalidatePath('/');
 
     return { success: true, message: "Produto adicionado com sucesso!" };
 
@@ -109,5 +101,34 @@ export async function removeCartItem(itemId: number) {
   } catch (error) {
     console.error("Erro ao remover item:", error);
     return { success: false, error: "Erro ao remover item." };
+  }
+}
+
+export async function cleanCart(){
+  try{
+    const user = await getAuthenticatedUser();
+    if(!user) return { success: false, error: "Usuário não autenticado ou não encontrado." }
+
+    let cart = await prisma.cart.findUnique({
+      where: { user_id: user.id }
+    });
+    if(!cart) return { success: true }
+
+    await prisma.cartItem.deleteMany({
+      where: { cart_id: cart.id }
+    });
+
+    await prisma.cart.update({
+      where: { id: cart.id },
+      data: { updatedAt: new Date() }
+    });
+
+    revalidatePath('/cart');
+    
+    return { success: true, message: "Carrinho esvaziado com sucesso!" };
+    
+  } catch(error){
+    console.error("Erro ao limpar carrinho:", error);
+    return { success: false, error: "Erro ao limpar carrinho." }
   }
 }

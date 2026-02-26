@@ -25,7 +25,9 @@ export function PaymentStep() {
   useEffect(() => {
     async function fetchCards() {
       const cards = await getUserPaymentMethods();
-      setSavedCards(cards);
+      if(Array.isArray(cards)){
+        setSavedCards(cards);
+      }
       setIsLoadingCards(false);
     }
     fetchCards();

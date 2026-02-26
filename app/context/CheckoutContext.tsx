@@ -88,6 +88,9 @@ interface CheckoutContextType {
 
   pixData: PixDataType | null;
   setPixData: React.Dispatch<React.SetStateAction<PixDataType | null>>;
+
+  orderedAt: Date | null;
+  setOrderedAt: React.Dispatch<React.SetStateAction<Date | null>>;
 }
 
 const CheckoutContext = createContext<CheckoutContextType | undefined>(undefined);
@@ -137,6 +140,8 @@ export function CheckoutProvider({ children, initialCartItems }: CheckoutProvide
 
   const finalTotal = total - pixDiscount;
 
+
+  const [orderedAt, setOrderedAt] = useState<Date | null>(null);
   return (
     <CheckoutContext.Provider 
       value={{ 
@@ -157,6 +162,7 @@ export function CheckoutProvider({ children, initialCartItems }: CheckoutProvide
         pixDiscount,
         finalTotal,
         pixData, setPixData,
+        orderedAt, setOrderedAt
       }}
     >
       {children}

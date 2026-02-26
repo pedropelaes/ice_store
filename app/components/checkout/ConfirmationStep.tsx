@@ -4,6 +4,7 @@ import { useCheckout } from "@/app/context/CheckoutContext";
 import { ReviewSection } from "./ReviewSection";
 import { OrderItemsReview } from "./OrderItemsReview";
 import { PixQRCodeDisplay } from "./PixQRCodeDisplay";
+import { ExpirationTimer } from "@/app/checkout/ExpirationTimer";
 
 export function ConfirmationStep() {
   const { 
@@ -15,6 +16,7 @@ export function ConfirmationStep() {
     shippingFee,
     pixData,
     cartItems,
+    orderedAt,
   } = useCheckout();
 
   const formatAddress = (data: typeof deliveryData) => {
@@ -31,6 +33,7 @@ export function ConfirmationStep() {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-black">
+      <ExpirationTimer orderedAt={orderedAt} />
       
       {paymentMethod === 'PIX' && pixData ? (
         <PixQRCodeDisplay 

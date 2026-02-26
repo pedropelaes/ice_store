@@ -1,18 +1,11 @@
 "use server"
 
 import prisma from "@/app/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/lib/auth";
+import { getAuthenticatedUser } from "../lib/get-user";
 
 export async function getUserAddresses() {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.email) return [];
-
-        const user = await prisma.user.findUnique({
-            where: { email: session.user.email }
-        });
-
+        const user = await getAuthenticatedUser();
         if (!user) return [];
 
         // Busca todos os endereços do usuário, trazendo o padrão primeiro

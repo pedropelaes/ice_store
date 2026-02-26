@@ -202,7 +202,7 @@ model OrderItem {
   size          Size
 
   // relations
-  order         Order          @relation(fields: [order_id], references: [id])
+  order         Order          @relation(fields: [order_id], references: [id], onDelete: Cascade)
   order_id      Int 
   product       Product        @relation(fields: [product_id], references: [id])
   product_id    Int     

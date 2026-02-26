@@ -1,8 +1,7 @@
 "use server"
 
 import prisma from "@/app/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../lib/auth";
+import { getAuthenticatedUser } from "../lib/get-user";
 
 export async function calculateShipping(destinationCep: string) {
   try {
@@ -11,12 +10,10 @@ export async function calculateShipping(destinationCep: string) {
       return { success: false, error: "CEP inválido." };
     }
 
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user?.email) {
-      return { success: false, error: "Usuário não autenticado." };
-    }
+    const authUser = await getAuthenticatedUser();
+    if(!authUser) return { success: false, error: "Usuário não autenticado ou não encontrado." }
 
-    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    const user = await prisma.user.findUnique({ where: { email: authUser.email } });
     if (!user) return { success: false, error: "Usuário não encontrado." };
 
     const cart = await prisma.cart.findUnique({
