@@ -7,6 +7,10 @@ export const serializeProduct = (product: any) => ({
   ...product,
   price: Number(product.price),
   discount_price: product.discount_price ? Number(product.discount_price) : null,
+  weight: product.weight ? Number(product.weight) : null,
+  length: product.length ? Number(product.length) : null,
+  width: product.width ? Number(product.width) : null,
+  height: product.height ? Number(product.height) : null,
   created_at: product.created_at.toISOString(),
   launched_at: product.launched_at ? product.launched_at.toISOString() : null,
   // Se houver items, garante que sejam objetos simples também

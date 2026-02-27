@@ -17,10 +17,14 @@ export function PaymentStep() {
     saveBillingAddress, setSaveBillingAddress,
     savePaymentMethod, setSavePaymentMethod,
     savedCardId, setSavedCardId,
+    total
   } = useCheckout();
 
   const [savedCards, setSavedCards] = useState<any[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
+
+  const [installmentsOptions, setInstallmentsOptions] = useState<any[]>([]);
+  const [isLoadingInstallments, setIsLoadingInstallments] = useState(false);
   
   useEffect(() => {
     async function fetchCards() {
@@ -39,6 +43,16 @@ export function PaymentStep() {
 
   const handleCardNumber = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = formatNumbersOnly(e.target.value);
+
+    if (val.length >= 6 && installmentsOptions.length === 0) {
+      const bin = val.substring(0, 6); 
+      fetchInstallments(bin);
+    } 
+    else if (val.length < 6 && installmentsOptions.length > 0) {
+      setInstallmentsOptions([]);
+      handleCardChange('installments', "1"); 
+    }
+    
     val = val.replace(/(\d{4})(?=\d)/g, "$1 "); 
     e.target.value = val;
   };
@@ -52,6 +66,29 @@ export function PaymentStep() {
   const handleCardChange = (field: keyof CardData, value: string) => {
     setCardData(prev => ({ ...prev, [field]: value }));
   }
+
+  const fetchInstallments = async (bin: string) => {
+    if (typeof (window as any).MercadoPago === 'undefined') return;
+    
+    setIsLoadingInstallments(true);
+    try {
+      const mp = new (window as any).MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+      
+      const response = await mp.getInstallments({
+        amount: total.toString(),
+        bin: bin,
+      });
+
+      if (response && response.length > 0 && response[0].payer_costs) {
+        console.log("teste")
+        setInstallmentsOptions(response[0].payer_costs);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar parcelas:", error);
+    } finally {
+      setIsLoadingInstallments(false);
+    }
+  };
 
   const isCardNumberError = cardData.number.length > 0 && !isValidCreditCardNumber(cardData.number);
   const isCardNameError = cardData.name.length > 0 && cardData.name.trim().length < 3;
@@ -189,19 +226,6 @@ export function PaymentStep() {
                 </div>
               </div>
 
-              <div className="md:col-span-2 mt-2">
-                <label className="block text-sm font-medium mb-1">Parcelamento *</label>
-                <select 
-                  value={cardData.installments} 
-                  onChange={(e) => handleCardChange('installments', e.target.value)} 
-                  className="input-custom w-full bg-white cursor-pointer"
-                >
-                  <option value="1">1x sem juros</option>
-                  <option value="2">2x sem juros</option>
-                  <option value="3">3x sem juros</option>
-                </select>
-              </div>
-
               <div className="md:col-span-2 flex items-center gap-2">
                 <input 
                   type="checkbox" 
@@ -217,16 +241,24 @@ export function PaymentStep() {
             </div>
           )}
 
-          {savedCardId && (
-             <div className="mt-4 pt-4 border-t border-gray-200 animate-in fade-in">
+          <div className="md:col-span-2 mt-2">
                 <label className="block text-sm font-medium mb-1">Parcelamento *</label>
-                <select value={cardData.installments} onChange={(e) => handleCardChange('installments', e.target.value)} className="input-custom w-full bg-white cursor-pointer">
-                  <option value="1">1x sem juros</option>
-                  <option value="2">2x sem juros</option>
-                  <option value="3">3x sem juros</option>
+                <select 
+                  value={cardData.installments} 
+                  onChange={(e) => handleCardChange('installments', e.target.value)} 
+                  className="input-custom w-full bg-white cursor-pointer"
+                >
+                  {installmentsOptions.length > 0 ? (
+                    installmentsOptions.map((option: any) => (
+                      <option key={option.installments} value={option.installments}>
+                          {option.recommended_message} 
+                      </option>
+                    ))
+                  ): (
+                    <option value="1">1x de R$ {total.toFixed(2).replace('.', ',')}</option>
+                  )}
                 </select>
-             </div>
-          )}
+              </div>
         </div>
       )}
 
