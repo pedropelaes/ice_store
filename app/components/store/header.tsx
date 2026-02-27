@@ -142,7 +142,7 @@ export function Header({user}: HeaderProps) {
                                 </Link>
 
                                 <Link 
-                                    href="/profile" 
+                                    href="/user-options" 
                                     className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
                                     onClick={() => setActiveDropdown(null)}
                                 >
