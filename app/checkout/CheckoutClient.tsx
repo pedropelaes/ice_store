@@ -262,6 +262,7 @@ function CheckoutSummary() {
                                         installments: Number(cardData.installments || 1),
                                         payer: payerData,
                                         orderId: orderId.toString(),
+                                        last4: cardData.number.slice(-4)
                                     });
                                 } 
                                 else {
@@ -304,6 +305,7 @@ function CheckoutSummary() {
                                         paymentMethodId: fetchedPaymentMethodId,
                                         payer: payerData,
                                         orderId: orderId.toString(),
+                                        last4: cardData.number.slice(-4)
                                     });
 
                                     if (paymentResponse.success && savePaymentMethod) {

@@ -25,11 +25,9 @@ enum OrderStatus {
   SHIPPED
 }
 
-enum SessionStatus {
-  ACTIVE
-  COMPLETED
-  EXPIRED
-  CANCELED
+enum IPaymentMethod {
+  PIX
+  CREDIT
 }
 
 enum ProductStatus {
@@ -65,7 +63,6 @@ model User {
   orders            Order[]
   cart              Cart?
   products          Product[]
-  checkoutSessions  CheckoutSession[]
   addresses         Address[]
   paymenthMethods   PaymentMethod[]
 }
@@ -193,6 +190,7 @@ model Order{
   user_id       Int
   orderItems    OrderItem[]
   shipping      ShippingAddress?
+  payment       OrderPayment?
 }
 
 model OrderItem {
@@ -223,16 +221,16 @@ model ShippingAddress {
   order       Order   @relation(fields: [orderId], references: [id])
 }
 
-model CheckoutSession {
-  id            Int           @id @default(autoincrement())
-  status        SessionStatus @default(ACTIVE)
-  expires_at    DateTime      
-
-  // relations
-  user_id       Int
-  client        User          @relation(fields: [user_id], references: [id])
+model OrderPayment {
+  id            Int     @id @default(autoincrement())
+  orderId       Int     @unique
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  method        IPaymentMethod  
+  installments  Int     @default(1)
+  card_brand    String? 
+  card_last4    String? 
 }
-
 
 
 

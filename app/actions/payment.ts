@@ -8,6 +8,7 @@ import { calculateShipping } from "./shipping";
 import { sendReceiptEmail } from "../services/mail";
 import { DeliveryData } from "../context/CheckoutContext";
 import { getAuthenticatedUser } from "../lib/get-user";
+import { IPaymentMethod } from "../generated/prisma";
 
 export async function getUserPaymentMethods() {
     try {
@@ -66,7 +67,8 @@ interface CardPaymentParams {
         cpf: string;
     };
     orderId: string;
-    savedCardId?: number
+    savedCardId?: number;
+    last4?: string;
 }
 
 export async function processPixPayment({ amount, payer, orderId }: PixPaymentParams) {
@@ -113,7 +115,7 @@ export async function processPixPayment({ amount, payer, orderId }: PixPaymentPa
     }
 }
 
-export async function processCardPayment({ token, installments, paymentMethodId, payer, orderId, savedCardId }: CardPaymentParams) {
+export async function processCardPayment({ token, installments, paymentMethodId, payer, orderId, savedCardId, last4 }: CardPaymentParams) {
     try {
         const authUser = await getAuthenticatedUser();
         if(!authUser) return { success: false, error: "Usuário não autenticado ou não encontrado." }
@@ -133,7 +135,6 @@ export async function processCardPayment({ token, installments, paymentMethodId,
         let finalPaymentMethodId = paymentMethodId;
 
         if (savedCardId) {
-            // Em vez de simular aprovação, devolvemos um erro elegante e técnico
             return {
                 success: false, 
                 error: "⚠️ Ambiente de Demonstração: O uso de cartões salvos requer validação de CVV e arquitetura de 'Customers' no Mercado Pago. Por favor, insira os dados de um cartão de teste para finalizar."
@@ -163,7 +164,18 @@ export async function processCardPayment({ token, installments, paymentMethodId,
                 idempotencyKey: idempotencyKey
             }
         });
-        changeOrderStatus(true, Number(orderId))
+        if(response.status === 'approved'){
+            await prisma.orderPayment.create({
+              data: {
+                    orderId: Number(orderId),
+                    method: IPaymentMethod.CREDIT,
+                    installments: installments,
+                    card_brand: paymentMethodId,
+                    card_last4: last4 
+                }  
+            })
+            changeOrderStatus(true, Number(orderId))
+        }
 
         return {
             success: true, 
@@ -179,7 +191,7 @@ export async function processCardPayment({ token, installments, paymentMethodId,
 }
 
 interface CheckoutItem {
-    productId: number; // No seu schema é Int
+    productId: number;
     size: Size;
     quantity: number;
 }
@@ -264,10 +276,8 @@ export async function createOrderAndReserveStock(data: {
                 totalFinal -= backendSubtotal * 0.05; // 5% de desconto apenas sobre os produtos
             }
 
-            // 2.3 Criar o pedido (Order) com os itens (OrderItem)
-            const order = await tx.order.create({
-                data: {
-                    user_id: user.id,
+            const orderData: any = {
+                user_id: user.id,
                     total_gross: totalGross,
                     total_final: totalFinal,
                     status: 'PENDING',
@@ -286,8 +296,17 @@ export async function createOrderAndReserveStock(data: {
                     orderItems: {
                         create: orderItemsData
                     }
+            }
+
+            if(data.paymentMethod === "PIX"){
+                orderData.payment = {
+                    create: {
+                        method: IPaymentMethod.PIX
+                    }
                 }
-            });
+            }
+
+            const order = await tx.order.create({ data: orderData });
 
             return { order, totalFinal };
         });

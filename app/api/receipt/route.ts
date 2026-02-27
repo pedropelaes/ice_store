@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
           include: { product: true }
         },
         shipping: true,
+        payment: true,
       }
     });
 
@@ -52,6 +53,7 @@ export async function GET(req: NextRequest) {
       doc.font('Helvetica-Bold').text("Dados do Cliente:");
       doc.font('Helvetica').text(`Nome: ${order.client.name || "Cliente"}`);
       doc.text(`E-mail: ${order.client.email}`);
+      doc.text(`CPF: ${order.client.cpf}`)
       doc.moveDown();
 
       // Dados do Envio
@@ -62,6 +64,16 @@ export async function GET(req: NextRequest) {
         doc.text(`${order.shipping.neighborhood} - ${order.shipping.city}/${order.shipping.state}`);
         doc.text(`CEP: ${order.shipping.zipCode}`);
         doc.moveDown();
+    }
+
+    if(order.payment) {
+      doc.font('Helvetica-Bold').text("Dados do pagamento:");
+      doc.font('Helvetica').text(`Método de pagamento: ${order.payment.method === 'CREDIT' ? "Cartão de crédito" : "Pix"}`);
+      if(order.payment.method === 'CREDIT'){
+        doc.font('Helvetica').text(`Cartão: XXXX-XXXX-XXXX-${order.payment.card_last4}`);
+        doc.font('Helvetica').text(`Bandeira: ${order.payment.card_brand}`)
+      }
+      doc.moveDown();
     }
         
 
