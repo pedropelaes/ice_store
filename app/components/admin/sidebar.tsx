@@ -19,7 +19,9 @@ export default function Sidebar({ isOpen }: { isOpen: boolean }) {
       }`}
     >
       <div className="w-64 flex flex-col h-full min-w-[16rem]">
-        <div className="p-4 text-2xl font-bold">(LOGO)</div>
+        <Link href="/" className="p-4 text-2xl font-bold">
+          (LOGO)
+        </Link>
         <nav className="flex-1 px-2 py-16 space-y-2">
           {menuItems.map((item) => {
             const isActive = pathname === item.path;
