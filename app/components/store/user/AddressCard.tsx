@@ -25,7 +25,7 @@ interface AddressCardProps {
 
 export default function AddressCard({ address, onEdit, onDelete }: AddressCardProps) {
   return (
-    <div className={`p-5 rounded-lg border relative flex flex-col justify-between h-full bg-white shadow-sm transition-all ${
+    <div className={`p-5 rounded-lg border relative flex flex-col justify-between h-full bg-gray-50/50 shadow-sm transition-all ${
         address.is_default ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-200 hover:border-gray-300'
     }`}>
       

@@ -16,6 +16,7 @@ export function ProfileHeader({ userName }: ProfileHeaderProps) {
     if (pathname === "/profile/addresses") title = "Seus endereços";
     if (pathname === "/profile/cards") title = "Seus cartões";
     if (pathname === "/profile/data") title = "Seus dados";
+    if (pathname === "/profile/delete") title = "Apagar sua conta"
 
     const isRoot = pathname === "/profile";
 

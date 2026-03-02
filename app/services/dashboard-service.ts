@@ -80,7 +80,7 @@ export const DashboardService = {
                 _count: { id: true }
             }),
 
-            prisma.user.count({ where: { role: 'USER' } }),
+            prisma.user.count({ where: { role: 'USER', active: true } }),
 
             prisma.$queryRaw<any[]>`
                 SELECT COALESCE(SUM(price * "totalStock"), 0) as total

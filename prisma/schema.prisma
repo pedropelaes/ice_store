@@ -58,6 +58,7 @@ model User {
   role            Role        @default(USER)
   emailVerified   DateTime?
   createdAt       DateTime    @default(now())
+  active          Boolean     @default(true)
 
   // relations
   orders            Order[]
