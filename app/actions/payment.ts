@@ -61,6 +61,7 @@ interface CardPaymentParams {
     token?: string;
     installments: number;
     paymentMethodId?: string;
+    issuerId?: string;
     payer: {
         firstName: string;
         lastName: string;
@@ -115,7 +116,7 @@ export async function processPixPayment({ amount, payer, orderId }: PixPaymentPa
     }
 }
 
-export async function processCardPayment({ token, installments, paymentMethodId, payer, orderId, savedCardId, last4 }: CardPaymentParams) {
+export async function processCardPayment({ token, installments, paymentMethodId, issuerId, payer, orderId, savedCardId, last4 }: CardPaymentParams) {
     try {
         const authUser = await getAuthenticatedUser();
         if(!authUser) return { success: false, error: "Usuário não autenticado ou não encontrado." }
@@ -140,14 +141,14 @@ export async function processCardPayment({ token, installments, paymentMethodId,
                 error: "⚠️ Ambiente de Demonstração: O uso de cartões salvos requer validação de CVV e arquitetura de 'Customers' no Mercado Pago. Por favor, insira os dados de um cartão de teste para finalizar."
             };
         }
-
         const response = await payment.create({
             body: {
-                transaction_amount: Number(order.total_final),
+                transaction_amount: Number(Number(order.total_final).toFixed(2)),
                 token: finalToken,
                 description: `Pedido #${orderId} - Ice Store`,
                 installments: installments,
                 payment_method_id: finalPaymentMethodId,
+                issuer_id: issuerId ? Number(issuerId) : undefined,
                 payer: {
                     email: authUser.email, // Seguro, vem da sessão
                     first_name: payer.firstName, // Pode ser do titular do cartão

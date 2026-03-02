@@ -6,9 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { ProductCard } from "@/app/components/store/ProductCard";
 import { serializeProduct } from "@/app/(shop)/page";
 
-// Função para buscar dados
 async function getProduct(id: string) {
-  // Convertemos para Int, pois seu schema usa Int no ID
   const productId = parseInt(id);
   
   if (isNaN(productId)) return null;
@@ -17,18 +15,21 @@ async function getProduct(id: string) {
     where: { id: productId },
     include: {
       category: true,
-      items: true // Importante: traz o estoque
+      items: true 
     }
   });
 
   if (!product) return null;
 
-  // Serialização do Decimal (igual fizemos antes)
   return {
     ...product,
     price: Number(product.price),
     discount_price: product.discount_price ? Number(product.discount_price) : null,
-    items: product.items, // Já vem no formato certo
+    weight: product.weight ? Number(product.weight) : null,
+    length: product.length ? Number(product.length) : null,
+    width: product.width ? Number(product.width) : null,
+    height: product.height ? Number(product.height) : null,
+    items: product.items, 
     category: product.category
   };
 }

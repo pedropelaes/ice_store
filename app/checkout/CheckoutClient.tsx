@@ -279,7 +279,7 @@ function CheckoutSummary() {
                                         cardNumber: cardData.number.replace(/\D/g, ''),
                                         cardholderName: cardData.name,
                                         cardExpirationMonth: month,
-                                        cardExpirationYear: `20${year}`,
+                                        cardExpirationYear: year,
                                         securityCode: cardData.cvv,
                                         identificationType: 'CPF',
                                         identificationNumber: payerData.cpf.replace(/\D/g, '')
@@ -288,21 +288,28 @@ function CheckoutSummary() {
                                     if (!tokenResponse || !tokenResponse.id) {
                                         throw new Error("Dados do cartão inválidos. Verifique as informações.");
                                     }
+                                    console.log("TOKEN RESPONSE:", tokenResponse);
 
                                     const safeToken = tokenResponse.id;
                                     const bin = cardData.number.replace(/\D/g, '').substring(0, 6);
-                                    const paymentMethods = await mp.getPaymentMethods({ bin: bin });
+                                    const installmentsResponse = await mp.getInstallments({
+                                        amount: finalTotal.toFixed(2),
+                                        bin: bin
+                                    });
                                     
-                                    if (!paymentMethods || paymentMethods.results.length === 0) {
-                                        throw new Error("Não foi possível identificar a bandeira do cartão.");
+                                    if (!installmentsResponse || installmentsResponse.length === 0) {
+                                        throw new Error("Não foi possível identificar a bandeira ou emissor do cartão.");
                                     }
+                                    
 
-                                    const fetchedPaymentMethodId = paymentMethods.results[0].id;
+                                    const fetchedPaymentMethodId = installmentsResponse[0].payment_method_id;
+                                    const fetchedIssuerId = installmentsResponse[0].issuer.id;
 
                                     paymentResponse = await processCardPayment({
                                         token: safeToken,
                                         installments: Number(cardData.installments || 1),
                                         paymentMethodId: fetchedPaymentMethodId,
+                                        issuerId: fetchedIssuerId,
                                         payer: payerData,
                                         orderId: orderId.toString(),
                                         last4: cardData.number.slice(-4)

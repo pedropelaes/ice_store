@@ -46,7 +46,7 @@ export default async function CheckoutSuccessPage({
 
         {/* Botão de Ação */}
         <Link 
-          href="/orders" 
+          href="/profile/orders" 
           className="bg-black text-white font-bold py-3 px-8 rounded-full hover:bg-gray-800 transition-colors flex items-center gap-2"
         >
           Visualize seus pedidos <span className="text-lg leading-none mb-1">›</span>

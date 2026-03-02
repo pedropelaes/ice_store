@@ -10,6 +10,7 @@ interface HeaderProps {
   user?: {
     name?: string | null;
     email?: string | null;
+    role?: string | null;
   }
 }
 
@@ -132,17 +133,17 @@ export function Header({user}: HeaderProps) {
                                     <p className="text-sm font-bold truncate">{user?.name}</p>
                                 </div>
 
-                                <Link 
+                                {user.role === "ADMIN" &&<Link 
                                     href="/admin/dashboard" 
                                     className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
                                     onClick={() => setActiveDropdown(null)}
                                 >
                                     <LayoutDashboard size={16} />
                                     Painel Admin
-                                </Link>
+                                </Link>}
 
                                 <Link 
-                                    href="/user-options" 
+                                    href="/profile" 
                                     className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
                                     onClick={() => setActiveDropdown(null)}
                                 >
