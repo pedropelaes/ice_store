@@ -14,7 +14,6 @@ import { changeOrderStatus, createOrderAndReserveStock, processCardPayment, veri
 import Script from "next/script";
 import { cleanCart } from "../actions/cart";
 import { saveUserAddress, saveUserCard } from "../actions/checkout";
-import { getUserAddresses } from "../actions/adress";
 
 function CheckoutStepper() {
   const { currentStep, setCurrentStep } = useCheckout();

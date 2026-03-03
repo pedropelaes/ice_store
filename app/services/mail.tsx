@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
-import { EmailTemplate } from '@/app/components/email-template';
-import { ReceiptEmail } from '@/app/components/receipt-email-template'; // Ajuste o caminho conforme onde salvou
+import { EmailTemplate } from '@/app/components/emails/email-template';
+import { ReceiptEmail } from '@/app/components/emails/receipt-email-template'; // Ajuste o caminho conforme onde salvou
+import { ResetPasswordEmailTemplate } from '../components/emails/reset-password-email-template';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -54,6 +55,26 @@ export const sendReceiptEmail = async (email: string, name: string, orderId: num
     return true;
   } catch (err) {
     console.error("Erro no Resend (Recibo):", err);
+    return false;
+  }
+};
+
+export const sendResetPasswordEmail = async (email: string, name: string, resetToken: string) => {
+  const resetLink = `${domain}/auth/password-reset?token=${resetToken}`
+
+  const destinatario = process.env.NODE_ENV === 'development' 
+    ? 'pedropelaesdev@gmail.com' 
+    : email;
+
+  try{
+    const {data, error} = await resend.emails.send({
+      from: 'Ice Store <onboarding@resend.dev>',
+      to: destinatario,
+      subject: `Redefinição de senha`,
+      react: <ResetPasswordEmailTemplate name={name} resetLink={resetLink} />
+    })
+  }catch (err) {
+    console.error("Erro no Resend (redefinição de senha):", err);
     return false;
   }
 };

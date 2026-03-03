@@ -77,6 +77,28 @@ export default function loginPage(){
         }
     }
 
+    const handleForgotPassword = async () => {
+        if(!formData.email || formData.email.length === 0) return;
+        try{
+            const res = await fetch("/api/auth/forgot-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: formData.email})
+            });
+
+            const data = await res.json();
+
+            if(!res){
+                throw new Error(data.error || "Erro ao redefinir a senha.");
+            }else{
+                alert("Um e-mail de redefinição foi enviado para sua conta");
+            }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }catch (err: any) {
+            setError(err.message);
+        }
+    }
+
     return (
         <div className="flex flex-row min-h-screen w-full">
             <div className="w-2/3 flex flex-col p-12 bg-white relative">
@@ -169,6 +191,13 @@ export default function loginPage(){
                                 {loading ? "Entrando..." : "Entrar"}
                             </button>
                         </div>
+                        <div className="flex justify-center">
+                            <h2 className="xlfont-bold text-black mb-1 underline hover:cursor-pointer"
+                                onClick={handleForgotPassword}
+                            >Esqueci minha senha</h2>
+                        </div>
+                        
+                            
                     </form>
                 </div>
                 

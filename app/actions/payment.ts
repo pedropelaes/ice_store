@@ -132,50 +132,61 @@ export async function processCardPayment({ token, installments, paymentMethodId,
             throw new Error("Pedido não encontrado no sistema.");
         }
 
-        let finalToken = token;
-        let finalPaymentMethodId = paymentMethodId;
-
         if (savedCardId) {
             return {
                 success: false, 
-                error: "⚠️ Ambiente de Demonstração: O uso de cartões salvos requer validação de CVV e arquitetura de 'Customers' no Mercado Pago. Por favor, insira os dados de um cartão de teste para finalizar."
+                error: "⚠️ Ambiente de Demonstração: O uso de cartões salvos requer validação avançada. Insira um cartão novo."
             };
         }
-        const response = await payment.create({
-            body: {
-                transaction_amount: Number(Number(order.total_final).toFixed(2)),
-                token: finalToken,
-                description: `Pedido #${orderId} - Ice Store`,
-                installments: installments,
-                payment_method_id: finalPaymentMethodId,
-                issuer_id: issuerId ? Number(issuerId) : undefined,
-                payer: {
-                    email: authUser.email, // Seguro, vem da sessão
-                    first_name: payer.firstName, // Pode ser do titular do cartão
-                    last_name: payer.lastName,
-                    identification: {
-                        type: 'CPF',
-                        number: payer.cpf.replace(/\D/g, '') 
-                    }
-                },
-                external_reference: orderId,
-                capture: true, 
+
+        // Correção de Tipo: Garantindo que o Decimal do Prisma vire um número válido
+        const amountFinal = Number(order.total_final.toString());
+        const finalIssuerId = issuerId ? Number(issuerId) : undefined;
+        // Montando o corpo da requisição isolado para podermos "printar"
+        const requestBody = {
+            transaction_amount: Number(amountFinal.toFixed(2)),
+            token: token,
+            description: `Pedido #${orderId} - Ice Store`,
+            installments: Number(installments),
+            payment_method_id: paymentMethodId,
+            //issuer_id: finalIssuerId,
+            payer: {
+                email: "test_user_82347@test.com",
+                first_name: payer.firstName,
+                last_name: payer.lastName,
+                identification: {
+                    type: 'CPF',
+                    number: '12345678909'
+                }
             },
+            external_reference: orderId.toString(),
+            capture: true, 
+        };
+
+        console.log("\n=== 🟡 PAYLOAD ENVIADO PARA O MERCADO PAGO ===");
+        console.log(JSON.stringify(requestBody, null, 2));
+
+        const response = await payment.create({
+            body: requestBody,
             requestOptions: {
                 idempotencyKey: idempotencyKey
             }
         });
+
+        console.log("\n=== 🟢 SUCESSO! RESPOSTA DO MERCADO PAGO ===");
+        console.log("Status:", response.status, "| Detalhe:", response.status_detail);
+
         if(response.status === 'approved'){
             await prisma.orderPayment.create({
               data: {
                     orderId: Number(orderId),
                     method: IPaymentMethod.CREDIT,
-                    installments: installments,
+                    installments: Number(installments),
                     card_brand: paymentMethodId,
                     card_last4: last4 
                 }  
             })
-            changeOrderStatus(true, Number(orderId))
+            await changeOrderStatus(true, Number(orderId))
         }
 
         return {
@@ -185,9 +196,17 @@ export async function processCardPayment({ token, installments, paymentMethodId,
             statusDetail: response.status_detail,
         };
 
-    } catch (error) {
-        console.error("[MP_CARD_ERROR] Falha ao processar cartão:", error);
-        return { success: false, error: "Ocorreu um erro ao processar o pagamento com a operadora." };
+    } catch (error: any) {
+        // A MÁGICA DO DEBUG ESTÁ AQUI
+        console.error("\n=== 🔴 ERRO FATAL AO PROCESSAR CARTÃO ===");
+        console.error("Mensagem geral:", error.message);
+        console.error("Causa raiz (Detalhes da API):", JSON.stringify(error.cause || error, null, 2));
+        
+        // Retornamos a mensagem de erro do MP para o Front-end mostrar na tela vermelha!
+        return { 
+            success: false, 
+            error: `Erro na API do MP: ${error.message}. Olhe o terminal do backend.` 
+        };
     }
 }
 
