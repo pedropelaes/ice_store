@@ -2,6 +2,7 @@
 
 import PasswordModal from "@/app/components/modals/PasswordModal";
 import { formatCurrency, formatNumbersOnly } from "@/app/lib/formaters/formaters";
+import { uploadImage } from "@/app/lib/upload-image";
 import { ArrowRight, ImageIcon, Plus, Save, Trash2, UploadCloud, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { SyntheticEvent, useEffect, useRef, useState } from "react";
@@ -139,25 +140,7 @@ export default function AddProductPage() {
         setImagePreview("");
     };
 
-    const uploadImage = async (file: File): Promise<string> => {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_PRESET_NAME || "");
-
-        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-            method: "POST",
-            body: formData
-        });
-
-        if (!res.ok) {
-            throw new Error("Erro ao fazer upload da imagem");
-        }
-
-        const data = await res.json();
-        return data.secure_url; 
-    }
+    
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;

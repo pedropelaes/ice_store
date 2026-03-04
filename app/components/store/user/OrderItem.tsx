@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Image as ImageIcon } from "lucide-react";
+import { SyntheticEvent, useRef, useState } from "react";
+import { ChevronDown, Image as ImageIcon, Star, X } from "lucide-react";
 import Image from "next/image";
 import { OrderStatus, Size } from "@/app/generated/prisma";
+import PasswordModal from "../../modals/PasswordModal";
+import { uploadImage } from "@/app/lib/upload-image";
 
 type OrderItem = {
     id: number;
@@ -27,7 +29,16 @@ type OrderProp = {
 
 export function OrderCard({ order }: { order: OrderProp }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    const [reviewingProduct, setReviewingProduct] = useState<{id: number, name: string} | null>(null);
+    
+    const [rating, setRating] = useState(5);
+    const [hoverRating, setHoverRating] = useState(0);
+    const [description, setDescription] = useState("");
 
+    const [imageFile, setImageFile] = useState<File | null>(null); 
+    const [imagePreview, setImagePreview] = useState<string>("");
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const getStatusStyle = (status: string) => {
         switch (status) {
@@ -41,6 +52,48 @@ export function OrderCard({ order }: { order: OrderProp }) {
     const statusInfo = getStatusStyle(order.status);
 
     const formattedDate = new Date(order.orderedAt).toLocaleDateString('pt-BR');
+
+    const handleReviewClick = (productId: number, productName: string) => {
+        setReviewingProduct({ id: productId, name: productName });
+        setIsReviewModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsReviewModalOpen(false);
+        setReviewingProduct(null);
+        setRating(5);
+        setDescription("");
+        setImageFile(null);
+        setImagePreview("");
+    };
+
+    const handleImageClick = () => {
+            fileInputRef.current?.click();
+        };
+    
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if(file) {
+            setImageFile(file);
+
+            const previewURL = URL.createObjectURL(file);
+            setImagePreview(previewURL);
+        }
+    };
+
+    const removeImage = (e: SyntheticEvent) => {
+        e.stopPropagation();
+        setImageFile(null);
+        setImagePreview("");
+    };
+
+    const handleSubmitReview = async (e: React.FormEvent) => {
+        e.preventDefault();
+        console.log("Avaliando produto:", reviewingProduct?.id);
+        console.log("Nota:", rating);
+        console.log("Descrição:", description);
+        console.log("Imagem:", imageFile);
+    };
 
     return (
         <div className="bg-[#E5E5E5] rounded-xl overflow-hidden text-black transition-all duration-300">
@@ -59,6 +112,7 @@ export function OrderCard({ order }: { order: OrderProp }) {
                         {statusInfo.label}
                     </span>
                 </div>
+
                 
                 <ChevronDown 
                     size={24} 
@@ -74,12 +128,14 @@ export function OrderCard({ order }: { order: OrderProp }) {
                         <div className="flex flex-col gap-4">
                             {order.orderItems.map((item) => (
                                 <div key={item.id} className="flex items-center gap-4">
-                                    <div className="w-16 h-16 bg-gray-200 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                    <div className="relative w-16 h-16 bg-gray-200 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
                                         {item.product.image_url ? (
-                                            <img 
+                                            <Image 
                                                 src={item.product.image_url} 
                                                 alt={item.product.name}
-                                                className="w-full h-full object-cover"
+                                                fill
+                                                sizes="64px"
+                                                className="object-cover"
                                             />
                                         ) : (
                                             <ImageIcon className="text-gray-400" />
@@ -96,12 +152,123 @@ export function OrderCard({ order }: { order: OrderProp }) {
                                             (Total: R$ {(item.unit_price * item.quantity).toFixed(2).replace('.', ',')})
                                         </span>
                                     </div>
+
+                                    {(order.status === 'PAID' || order.status === 'SHIPPED') && (
+                                        <button
+                                            onClick={() => handleReviewClick(item.product_id, item.product.name)}
+                                            className="ml-auto mt-2 sm:mt-0 flex items-center justify-center gap-1.5 bg-[#FFD700] hover:bg-[#F2C900] text-yellow-950 font-bold py-2 px-4 rounded-lg text-sm transition-colors shadow-sm whitespace-nowrap"
+                                        >
+                                            <Star size={16} className="fill-yellow-950" />
+                                            Avaliar Item
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
             </div>
+            {isReviewModalOpen && reviewingProduct && (
+                <PasswordModal isOpen={isReviewModalOpen} handleClose={handleCloseModal}>
+                    <div className="p-6 sm:p-8">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">
+                            Avaliar Produto
+                        </h3>
+                        <p className="text-center text-gray-500 text-sm mb-6 truncate px-4">
+                            {reviewingProduct.name}
+                        </p>
+
+                        <form onSubmit={handleSubmitReview} className="space-y-6">
+                            
+                            <div className="flex flex-col items-center gap-2">
+                                <span className="text-sm font-medium text-gray-700">Sua nota</span>
+                                <div className="flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((starValue) => (
+                                        <button
+                                            key={starValue}
+                                            type="button"
+                                            onClick={() => setRating(starValue)}
+                                            onMouseEnter={() => setHoverRating(starValue)}
+                                            onMouseLeave={() => setHoverRating(0)}
+                                            className="p-1 transition-transform hover:scale-110 focus:outline-none"
+                                        >
+                                            <Star 
+                                                size={32} 
+                                                className={`transition-colors duration-200 ${
+                                                    starValue <= (hoverRating || rating) 
+                                                        ? "fill-[#FFD700] text-[#FFD700]" 
+                                                        : "text-gray-300"
+                                                }`} 
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Descrição (opcional)
+                                </label>
+                                <textarea 
+                                    className="w-full p-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-black focus:border-black outline-none resize-none" 
+                                    placeholder="O que achou sobre o produto? Qualidade, tamanho, etc..."
+                                    rows={3}
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                />
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Adicionar foto (opcional)
+                                </label>
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    ref={fileInputRef} 
+                                    onChange={handleImageChange} 
+                                    className="hidden" 
+                                />
+                                
+                                {imagePreview ? (
+                                    <div className="relative w-24 h-24 border border-gray-200 rounded-lg p-1 bg-white shadow-sm">
+                                        <Image 
+                                            src={imagePreview} 
+                                            alt="Preview" 
+                                            fill
+                                            className="object-cover rounded-md p-1"
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={removeImage} 
+                                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-md transition-colors"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button 
+                                        type="button" 
+                                        onClick={handleImageClick} 
+                                        className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                                    >
+                                        <ImageIcon size={28} className="mb-2 text-gray-400" />
+                                        <span className="text-sm font-medium">Clique para fazer upload</span>
+                                        <span className="text-xs text-gray-400 mt-1">PNG, JPG até 5MB</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex pt-4 justify-center border-t border-gray-100">
+                                <button type="submit" className="btn-primary w-full sm:w-auto px-12">
+                                    Publicar Avaliação
+                                </button>
+                            </div>
+                        </form>
+
+                    </div>
+                </PasswordModal>
+            )}
         </div>
     );
 }
