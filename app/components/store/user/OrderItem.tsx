@@ -6,6 +6,7 @@ import Image from "next/image";
 import { OrderStatus, Size } from "@/app/generated/prisma";
 import PasswordModal from "../../modals/PasswordModal";
 import { uploadImage } from "@/app/lib/upload-image";
+import { publishProductReview, Review } from "@/app/actions/publishReview";
 
 type OrderItem = {
     id: number;
@@ -27,7 +28,7 @@ type OrderProp = {
     orderItems: OrderItem[];
 };
 
-export function OrderCard({ order }: { order: OrderProp }) {
+export function OrderCard({ order, reviewedProductIds }: { order: OrderProp, reviewedProductIds: number[]  }) {
     const [isOpen, setIsOpen] = useState(false);
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [reviewingProduct, setReviewingProduct] = useState<{id: number, name: string} | null>(null);
@@ -39,6 +40,9 @@ export function OrderCard({ order }: { order: OrderProp }) {
     const [imageFile, setImageFile] = useState<File | null>(null); 
     const [imagePreview, setImagePreview] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [isLoading, setIsLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState("");
     
     const getStatusStyle = (status: string) => {
         switch (status) {
@@ -87,12 +91,46 @@ export function OrderCard({ order }: { order: OrderProp }) {
         setImagePreview("");
     };
 
-    const handleSubmitReview = async (e: React.FormEvent) => {
+    const handleSubmitReview = async (e: React.SubmitEvent) => {
         e.preventDefault();
-        console.log("Avaliando produto:", reviewingProduct?.id);
-        console.log("Nota:", rating);
-        console.log("Descrição:", description);
-        console.log("Imagem:", imageFile);
+        if(!reviewingProduct) return;
+
+        setIsLoading(true);
+        setErrorMsg("");
+  
+        let image_url = undefined;
+        if(imageFile) image_url = await uploadImage(imageFile);
+
+        try {
+        let image_url = undefined;
+        
+        if (imageFile) {
+            image_url = await uploadImage(imageFile);
+            if (!image_url) throw new Error("Falha ao fazer upload da imagem.");
+        }
+
+        const review: Review = {
+            rating: rating,
+            description: description,
+            image_url: image_url,
+            productId: reviewingProduct.id,
+        }
+
+        const res = await publishProductReview(review);
+        
+        if (!res.success) {
+            setErrorMsg(res.error || "Erro ao avaliar produto.");
+            return;
+        }
+        
+        alert("Avaliação publicada com sucesso!");
+        handleCloseModal();
+    } catch (error) {
+        console.error(error);
+        setErrorMsg("Ocorreu um erro inesperado ao publicar.");
+    } finally {
+        setIsLoading(false);
+    }
     };
 
     return (
@@ -126,7 +164,9 @@ export function OrderCard({ order }: { order: OrderProp }) {
                 <div className="overflow-hidden">
                     <div className="p-4 border-t border-gray-300 bg-gray-50/50">
                         <div className="flex flex-col gap-4">
-                            {order.orderItems.map((item) => (
+                            {order.orderItems.map((item) => {
+                                const hasReviewed = reviewedProductIds.includes(item.product_id);
+                                return (
                                 <div key={item.id} className="flex items-center gap-4">
                                     <div className="relative w-16 h-16 bg-gray-200 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
                                         {item.product.image_url ? (
@@ -154,16 +194,24 @@ export function OrderCard({ order }: { order: OrderProp }) {
                                     </div>
 
                                     {(order.status === 'PAID' || order.status === 'SHIPPED') && (
-                                        <button
-                                            onClick={() => handleReviewClick(item.product_id, item.product.name)}
-                                            className="ml-auto mt-2 sm:mt-0 flex items-center justify-center gap-1.5 bg-[#FFD700] hover:bg-[#F2C900] text-yellow-950 font-bold py-2 px-4 rounded-lg text-sm transition-colors shadow-sm whitespace-nowrap"
-                                        >
-                                            <Star size={16} className="fill-yellow-950" />
-                                            Avaliar Item
-                                        </button>
+                                        hasReviewed ? (
+                                            <div className="ml-auto mt-2 sm:mt-0 flex items-center justify-center gap-1.5 bg-gray-200 text-gray-500 font-bold py-2 px-4 rounded-lg text-sm shadow-sm whitespace-nowrap cursor-not-allowed">
+                                                <Star size={16} className="fill-gray-400 text-gray-400" />
+                                                Avaliado
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleReviewClick(item.product_id, item.product.name)}
+                                                className="ml-auto mt-2 sm:mt-0 flex items-center justify-center gap-1.5 bg-[#FFD700] hover:bg-[#F2C900] text-yellow-950 font-bold py-2 px-4 rounded-lg text-sm transition-colors shadow-sm whitespace-nowrap"
+                                            >
+                                                <Star size={16} className="fill-yellow-950" />
+                                                Avaliar Item
+                                            </button>
+                                        )
                                     )}
                                 </div>
-                            ))}
+                            )
+                            })}
                         </div>
                     </div>
                 </div>
@@ -259,9 +307,23 @@ export function OrderCard({ order }: { order: OrderProp }) {
                                 )}
                             </div>
 
+                            {errorMsg && (
+                                <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-md text-center">
+                                    {errorMsg}
+                                </p>
+                            )}
+
                             <div className="flex pt-4 justify-center border-t border-gray-100">
-                                <button type="submit" className="btn-primary w-full sm:w-auto px-12">
-                                    Publicar Avaliação
+                                <button 
+                                    type="submit" 
+                                    disabled={isLoading}
+                                    className="btn-primary w-full sm:w-auto px-12 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {isLoading ? (
+                                        <>Processando...</>
+                                    ) : (
+                                        "Publicar Avaliação"
+                                    )}
                                 </button>
                             </div>
                         </form>

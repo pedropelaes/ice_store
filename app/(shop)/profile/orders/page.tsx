@@ -52,6 +52,14 @@ export default async function UserOrdersPage({
         }))
     }));
 
+    const user = await prisma.user.findUnique({ where: { email: authUser.email }});
+
+    const userReviews = await prisma.review.findMany({
+        where: { userId: user?.id },
+        select: { productId: true }!
+    });
+    const reviewedProductIds = userReviews.map(review => review.productId);
+
     return (
         <div className="max-w-4xl mx-auto px-4">
             
@@ -70,7 +78,9 @@ export default async function UserOrdersPage({
                                 animationFillMode: 'forwards'
                             }}
                         >
-                            <OrderCard order={order as any} />
+                            <OrderCard order={order as any}
+                                reviewedProductIds={reviewedProductIds}
+                            />
                         </div>
                     ))}
 
