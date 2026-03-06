@@ -33,8 +33,8 @@ export const sendVerificationEmail = async (email: string, name: string, token: 
   }
 };
 
-export const sendReceiptEmail = async (email: string, name: string, orderId: number) => {
-  const receiptLink = `${domain}/api/receipt?order=${orderId}`;
+export const sendReceiptEmail = async (email: string, name: string, orderId: string) => {
+  const receiptLink = `${domain}/api/receipt?token=${orderId}`;
   
   const destinatario = process.env.NODE_ENV === 'development' 
     ? 'pedropelaesdev@gmail.com' 

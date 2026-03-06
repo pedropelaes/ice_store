@@ -2,7 +2,7 @@ import * as React from 'react';
 
 interface ReceiptEmailProps {
   name: string;
-  orderId: number;
+  orderId: string;
   receiptLink: string;
 }
 

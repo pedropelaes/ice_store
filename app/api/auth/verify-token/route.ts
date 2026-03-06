@@ -27,6 +27,10 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Associated e-mail doesn't exist." }, { status: 404 });
         }
 
+        if (existingUser.emailVerified) {
+            return NextResponse.json({ success: "E-mail já verificado anteriormente." }, { status: 200 });
+        }
+
         await prisma.user.update({
             where: { id: existingUser.id },
             data: {

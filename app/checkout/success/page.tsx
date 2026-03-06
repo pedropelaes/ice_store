@@ -4,10 +4,10 @@ import Link from "next/link";
 export default async function CheckoutSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ order?: string }>; 
+  searchParams: Promise<{ token?: string }>; 
 }) {
   const resolvedParams = await searchParams;
-  const orderId = resolvedParams.order;
+  const token = resolvedParams.token;
 
   return (
     <div className="min-h-screen bg-white text-black flex flex-col">
@@ -37,7 +37,7 @@ export default async function CheckoutSuccessPage({
         <p className="text-center font-bold text-sm md:text-base mb-8 max-w-md">
           Um recibo foi gerado e enviado para seu e-mail, você pode baixa-lo clicando{" "}
           <a 
-            href={`/api/receipt?order=${orderId}`} 
+            href={`/api/receipt?token=${token}`} 
             className="text-[#32CD32] hover:text-[#228B22] underline transition-colors"
           >
             aqui

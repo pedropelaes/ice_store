@@ -4,8 +4,6 @@ import prisma from "../lib/prisma";
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { getAuthenticatedUser } from "../lib/get-user";
 import { CardData, DeliveryData } from "../context/CheckoutContext";
-import { boolean } from "zod";
-import { getUserAddresses } from "./adress";
 
 const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN as string });
 const paymentApi = new Payment(mpClient);

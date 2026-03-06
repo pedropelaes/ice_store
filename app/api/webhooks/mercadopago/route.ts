@@ -22,6 +22,16 @@ export async function POST(req: Request) {
         const orderId = paymentInfo.external_reference;
 
         if (orderId) {
+            const existingOrder = await prisma.order.findUnique({  //idempotencia
+                where: { id: Number(orderId) },
+                select: { status: true } // Puxa só o status para ficar rápido
+            });
+
+            if (existingOrder?.status === 'PAID') {
+                console.log(`Webhook duplicado recebido para o pedido ${orderId}. Ignorando.`);
+                return new NextResponse("Já processado", { status: 200 });
+            }
+
             const order = await prisma.order.update({
                 where: { id: Number(orderId) },
                 data: { status: 'PAID' },
@@ -32,7 +42,7 @@ export async function POST(req: Request) {
                 await sendReceiptEmail(
                     order.client.email, 
                     order.client.name, 
-                    order.id
+                    order.receipt_token
                 );
             }
         }

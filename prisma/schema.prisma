@@ -197,6 +197,8 @@ model Order{
   total_final   Decimal
   orderedAt     DateTime      @default(now())
 
+  receipt_token   String      @unique @default(uuid())
+
   // relations
   client        User          @relation(fields: [user_id], references: [id])
   user_id       Int

@@ -104,6 +104,7 @@ function CheckoutSummary() {
       orderedAt, setOrderedAt,
       savePaymentMethod, saveAddress
     } = useCheckout();
+    const [receiptToken, setReceiptToken] = useState("");
 
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -145,7 +146,7 @@ function CheckoutSummary() {
                 console.log("Buscando status do pagamento")
                 if (status.approved) {
                     clearInterval(interval); 
-                    window.location.href = `/checkout/success?order=${orderId}`;
+                    window.location.href = `/checkout/success?token=${receiptToken}`;
                 }
             }, 3000);
         }
@@ -221,12 +222,12 @@ function CheckoutSummary() {
                                     cartItems: formattedItems,
                                     paymentMethod,
                                     payer: payerData,
-                                    addressData: deliveryData
+                                    addressData: deliveryData,
                                 });
 
                                 if (response.success && response.orderId) {
                                     setOrderId(response.orderId);
-                                    
+                                    setReceiptToken(response.receiptToken)
                                     if (paymentMethod === 'PIX' && response.pixData) {
                                         setPixData(response.pixData); // Guarda o QR Code
                                     }
@@ -321,7 +322,7 @@ function CheckoutSummary() {
 
                                 if (paymentResponse && paymentResponse.success && paymentResponse.status === 'approved') {
                                     await cleanCart();
-                                    window.location.href = `/checkout/success?order=${orderId}`;
+                                    window.location.href = `/checkout/success?token=${receiptToken}`;
                                 } else {
                                     if (paymentResponse?.error) {
                                         setErrorMsg(paymentResponse.error);
@@ -412,7 +413,7 @@ function CheckoutSummary() {
                         // Força o redirecionamento ignorando o Mercado Pago
                         changeOrderStatus(true, orderId!)
                         cleanCart();
-                        window.location.href = `/checkout/success?order=${orderId}`;
+                        window.location.href = `/checkout/success?token=${receiptToken}`;
                     }}
                     className="bg-[#82FF95] text-black font-bold py-2 px-4 rounded-md mt-2 text-xs hover:bg-green-400 transition-colors"
                 >

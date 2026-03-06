@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       { status: 200 }
     );
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erro na rota de redefinição de senha:", error);
     return NextResponse.json(
       { error: "Ocorreu um erro interno ao redefinir a senha." },

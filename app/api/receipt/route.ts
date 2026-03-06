@@ -5,14 +5,15 @@ import PDFDocument from "pdfkit";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const orderId = searchParams.get("order");
+    
+    const token = searchParams.get("token");
 
-    if (!orderId) {
-      return new NextResponse("ID do pedido não fornecido.", { status: 400 });
+    if (!token) {
+      return new NextResponse("Token do recibo não fornecido.", { status: 400 });
     }
 
     const order = await prisma.order.findUnique({
-      where: { id: Number(orderId) },
+      where: { receipt_token: token }, 
       include: {
         client: true,
         orderItems: {

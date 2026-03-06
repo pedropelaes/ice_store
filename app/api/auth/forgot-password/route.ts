@@ -45,12 +45,17 @@ export async function POST(req: Request) {
       { status: 200 }
     );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    console.error("Erro na recuperação de senha:", error);
+  } catch (error: unknown) {
+    console.error("Erro na rota de redefinição de senha:", error);
+    
+    let errorMessage = "Ocorreu um erro interno ao redefinir a senha.";
+    if (error instanceof Error) {
+        errorMessage = error.message;
+    }
+    
     return NextResponse.json(
-      { error: "Erro interno no servidor." },
-      { status: 500 }
+        { error: errorMessage },
+        { status: 500 }
     );
-  }
+}
 }

@@ -1,9 +1,17 @@
 import prisma from "@/app/lib/prisma";
 import { NextResponse } from "next/server";
-import { Prisma } from "@/app/generated/prisma";
+import { Prisma, ProductStatus } from "@/app/generated/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/lib/auth";
 
 export async function GET(req: Request) {
     try {
+        const session = await getServerSession(authOptions);
+
+        if (!session || !session.user || session.user.role !== "ADMIN") {
+            return NextResponse.json({ message: "Acesso não autorizado." }, { status: 403 });
+        }
+
         const { searchParams } = new URL(req.url);
 
         const page = Number(searchParams.get("page")) || 1;
@@ -43,7 +51,7 @@ export async function GET(req: Request) {
         }
 
         if(status) {
-            filters.push({ active: status.toUpperCase() as any });
+            filters.push({ active: status.toUpperCase() as ProductStatus});
         }
 
         if(date){
@@ -62,7 +70,7 @@ export async function GET(req: Request) {
 
         const validOrder = sortOrder === 'asc' ? 'asc' : 'desc';
         
-        let orderByCondition: any = {};
+        let orderByCondition: Prisma.ProductOrderByWithRelationInput = {};
 
         switch (sortField) {
             case 'created_by':

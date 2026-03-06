@@ -235,9 +235,8 @@ export async function createOrderAndReserveStock(data: {
         // 2. INICIA A TRANSAÇÃO SEGURA NO BANCO
         const result = await prisma.$transaction(async (tx) => {
             let backendSubtotal = 0;
-            const orderItemsData = []; // Para criar os itens do pedido de uma vez
+            const orderItemsData = []; 
 
-            // 2.1 Checar estoque por TAMANHO e calcular valores reais
             for (const item of data.cartItems) {
                 const product = await tx.product.findUnique({
                     where: { id: item.productId }
@@ -245,7 +244,6 @@ export async function createOrderAndReserveStock(data: {
 
                 if (!product) throw new Error(`Produto não encontrado.`);
 
-                // Busca a variação de tamanho exata baseada na restrição @@unique do schema
                 const productItem = await tx.productItem.findUnique({
                     where: {
                         product_id_size: {
@@ -259,23 +257,19 @@ export async function createOrderAndReserveStock(data: {
                     throw new Error(`Estoque insuficiente para o produto: ${product.name} (Tamanho ${item.size})`);
                 }
 
-                // Remove do estoque da variação (ProductItem)
                 await tx.productItem.update({
                     where: { id: productItem.id },
                     data: { quantity: productItem.quantity - item.quantity }
                 });
 
-                // Remove do estoque total do produto (Product)
                 await tx.product.update({
                     where: { id: product.id },
                     data: { totalStock: product.totalStock - item.quantity }
                 });
 
-                // Usa o preço com desconto se existir, se não usa o preço normal
                 const unitPrice = Number(product.discount_price || product.price);
                 backendSubtotal += unitPrice * item.quantity;
 
-                // Prepara o objeto para a tabela OrderItem
                 orderItemsData.push({
                     product_id: product.id,
                     quantity: item.quantity,
@@ -284,7 +278,6 @@ export async function createOrderAndReserveStock(data: {
                 });
             }
 
-            // 2.2 Calcular Gross e Final (conforme schema)
             const validShippingFee = await calculateShipping(data.addressData.cep);
             if(validShippingFee.price === undefined){
                 throw new Error("Falha ao calcular o total");
@@ -293,11 +286,13 @@ export async function createOrderAndReserveStock(data: {
             let totalFinal = totalGross;
 
             if (data.paymentMethod === 'PIX') {
-                totalFinal -= backendSubtotal * 0.05; // 5% de desconto apenas sobre os produtos
+                totalFinal -= backendSubtotal * 0.05; 
             }
 
-            const orderData: any = {
-                user_id: user.id,
+            // Removido o 'any' para garantir segurança de tipos
+            const order = await tx.order.create({ 
+                data: {
+                    user_id: user.id,
                     total_gross: totalGross,
                     total_final: totalFinal,
                     status: 'PENDING',
@@ -312,28 +307,23 @@ export async function createOrderAndReserveStock(data: {
                             state: data.addressData.state,
                             zipCode: data.addressData.cep,
                         }
-                        },
+                    },
                     orderItems: {
                         create: orderItemsData
-                    }
-            }
-
-            if(data.paymentMethod === "PIX"){
-                orderData.payment = {
-                    create: {
-                        method: IPaymentMethod.PIX
-                    }
+                    },
+                    ...(data.paymentMethod === 'PIX' && {
+                        payment: {
+                            create: { method: IPaymentMethod.PIX }
+                        }
+                    })
                 }
-            }
-
-            const order = await tx.order.create({ data: orderData });
+            });
 
             return { order, totalFinal };
         });
 
         const { order, totalFinal } = result;
 
-        // Uptash para cancelar o pedido se não houver pagamento nos próximos 15 minutos.
         const qstashBaseUrl = process.env.NODE_ENV === 'development' 
             ? "http://localhost:8080/v2/publish" 
             : "https://qstash.upstash.io/v2/publish";
@@ -350,27 +340,37 @@ export async function createOrderAndReserveStock(data: {
             body: JSON.stringify({ orderId: order.id }),
         }).catch(err => console.error("Erro ao agendar expiração no QStash:", err));
 
-        // 3. SE FOR PIX, GERA O QR CODE AGORA
         if (data.paymentMethod === 'PIX') {
             const pixResult = await processPixPayment({
                 amount: totalFinal,
                 payer: {...data.payer, email: user.email},
-                orderId: order.id.toString(), // Mercado Pago exige string
+                orderId: order.id.toString(),
             });
 
             if (!pixResult) {
                 throw new Error("Falha ao gerar o QR Code do banco.");
             }
 
-            return { success: true, orderId: order.id, pixData: pixResult };
+            return { 
+                success: true, 
+                orderId: order.id, 
+                receiptToken: order.receipt_token,
+                pixData: pixResult 
+            };
         }
 
-        // Se for cartão, retorna o ID do pedido para o frontend gerar o token e processar depois
-        return { success: true, orderId: order.id, amount: totalFinal, orderedAt: order.orderedAt };
+        return { 
+            success: true, 
+            orderId: order.id, 
+            receiptToken: order.receipt_token,
+            amount: totalFinal, 
+            orderedAt: order.orderedAt 
+        };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Erro na criação do pedido:", error);
-        return { success: false, error: error.message || "Erro ao processar o pedido." };
+        const message = error instanceof Error ? error.message : "Erro ao processar o pedido.";
+        return { success: false, error: message };
     }
 }
 
@@ -390,7 +390,7 @@ export async function changeOrderStatus(approved: boolean, orderId: number) {
     });
 
     if (updatedOrder.client) {
-      sendReceiptEmail(updatedOrder.client.email, updatedOrder.client.name, updatedOrder.id).catch(console.error);
+      sendReceiptEmail(updatedOrder.client.email, updatedOrder.client.name, updatedOrder.receipt_token).catch(console.error);
     }
     return updatedOrder;
   } else {
