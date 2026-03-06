@@ -1,12 +1,12 @@
 "use client"
 
 import { SyntheticEvent, useRef, useState } from "react";
-import { ChevronDown, Image as ImageIcon, Star, X } from "lucide-react";
+import { ChevronDown, Image as ImageIcon, Star, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { OrderStatus, Size } from "@/app/generated/prisma";
 import PasswordModal from "../../modals/PasswordModal";
 import { uploadImage } from "@/app/lib/upload-image";
-import { publishProductReview, Review } from "@/app/actions/review";
+import { deleteReview, publishProductReview, Review } from "@/app/actions/review";
 
 type OrderItem = {
     id: number;
@@ -90,6 +90,20 @@ export function OrderCard({ order, reviewedProductIds }: { order: OrderProp, rev
         setImageFile(null);
         setImagePreview("");
     };
+
+    const handleDeleteReview = async (product_id: number) => {
+        try{
+            const res = await deleteReview(product_id);
+            if(res.success == true){
+                alert(res.message);
+            }else{
+                alert(`Erro ao apagar avaliação: ${res.error}`);
+            }
+        }catch(e){
+            console.log("Erro deletando avaliação: ", e);
+            alert("Erro ao deletar avaliação");
+        }
+    }
 
     const handleSubmitReview = async (e: React.SubmitEvent) => {
         e.preventDefault();
@@ -192,9 +206,18 @@ export function OrderCard({ order, reviewedProductIds }: { order: OrderProp, rev
 
                                     {(order.status === 'PAID' || order.status === 'SHIPPED') && (
                                         hasReviewed ? (
-                                            <div className="ml-auto mt-2 sm:mt-0 flex items-center justify-center gap-1.5 bg-gray-200 text-gray-500 font-bold py-2 px-4 rounded-lg text-sm shadow-sm whitespace-nowrap cursor-not-allowed">
-                                                <Star size={16} className="fill-gray-400 text-gray-400" />
-                                                Avaliado
+                                            <div className="ml-auto mt-2 sm:mt-0 flex flex-col items-center justify-center gap-1.5 bg-gray-200 text-gray-500 font-bold py-2 px-4 rounded-lg text-sm shadow-sm whitespace-nowrap cursor-not-allowed">
+                                                <span>
+                                                    <Star size={16} className="fill-gray-400 text-gray-400" />
+                                                    Avaliado
+                                                </span>
+                                                <button 
+                                                    className="p-2 bg-red-500 text-red-200 hover:text-red-300 hover:bg-red-900 rounded-md transition-colors"
+                                                    title="Excluir avaliação"
+                                                    onClick={() => handleDeleteReview(item.product_id)}
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
                                             </div>
                                         ) : (
                                             <button

@@ -85,3 +85,35 @@ export async function getProductReviews(productId: number) {
         return [];
     }
 }
+
+export async function deleteReview(productId: number) {
+    try{
+        const authUser = await getAuthenticatedUser();
+        if(!authUser) return { success: false, error: "Usuário não autenticado." };
+
+        const user = await prisma.user.findUnique({
+            where: { email: authUser.email }
+        });
+
+        if (!user) {
+            return { success: false, error: "Usuário não encontrado no banco." };
+        }
+
+        const res = await prisma.review.deleteMany({
+            where: { productId: productId, userId: user.id }
+        });
+
+        if (res.count === 0) {
+            return { success: false, error: "Avaliação não encontrada ou você não tem permissão." };
+        }
+        
+        revalidatePath("/profile/orders")
+        revalidatePath(`/product`)
+        
+        return { success: true, message:"Avaliação apagada." }
+    }catch(error){
+        console.error("Erro ao apagar avaliação: ", error);
+        return { success: false, error: "Erro interno ao apagar avaliação." }
+    }    
+}
+
