@@ -4,10 +4,11 @@ import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { ProductCard } from "./ProductCard";
+import { SerializedProduct } from "./product/ProductDetails";
 
 interface ProductRowProps {
   title: string;
-  products: any[]; // Idealmente use a tipagem correta do Prisma ou Product
+  products: SerializedProduct[]; // Substituímos o any[] pelo tipo seguro
   catalogLink?: string;
 }
 
@@ -53,7 +54,7 @@ export function ProductRow({ title, products, catalogLink }: ProductRowProps) {
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {products.map((product) => (
-            <div key={product.id} className="min-w-[200px] md:min-w-[240px] max-w-[240px] flex-none">
+            <div key={product.id} className="min-w-50 md:min-w-60 max-w-60 flex-none">
               <ProductCard product={product} />
             </div>
           ))}

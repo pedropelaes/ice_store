@@ -73,6 +73,11 @@ export const sendResetPasswordEmail = async (email: string, name: string, resetT
       subject: `Redefinição de senha`,
       react: <ResetPasswordEmailTemplate name={name} resetLink={resetLink} />
     })
+
+    if (error) {
+      console.error("Erro ao enviar email de resetar senha:", error);
+      return false;
+    }
   }catch (err) {
     console.error("Erro no Resend (redefinição de senha):", err);
     return false;

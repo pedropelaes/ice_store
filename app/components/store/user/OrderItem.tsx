@@ -98,9 +98,6 @@ export function OrderCard({ order, reviewedProductIds }: { order: OrderProp, rev
         setIsLoading(true);
         setErrorMsg("");
   
-        let image_url = undefined;
-        if(imageFile) image_url = await uploadImage(imageFile);
-
         try {
         let image_url = undefined;
         
@@ -168,7 +165,7 @@ export function OrderCard({ order, reviewedProductIds }: { order: OrderProp, rev
                                 const hasReviewed = reviewedProductIds.includes(item.product_id);
                                 return (
                                 <div key={item.id} className="flex items-center gap-4">
-                                    <div className="relative w-16 h-16 bg-gray-200 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                    <div className="relative w-16 h-16 bg-gray-200 rounded-md overflow-hidden shrink-0 flex items-center justify-center">
                                         {item.product.image_url ? (
                                             <Image 
                                                 src={item.product.image_url} 

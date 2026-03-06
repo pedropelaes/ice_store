@@ -61,7 +61,7 @@ export function ReviewList({ reviews }: { reviews: ReviewType[] }) {
                                 </p>
                             )}
 
-                            {/*review.image_url && (
+                            {review.image_url && (
                                 <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200">
                                     <Image 
                                         src={review.image_url} 
@@ -71,7 +71,7 @@ export function ReviewList({ reviews }: { reviews: ReviewType[] }) {
                                         className="object-cover"
                                     />
                                 </div>
-                            )*/}
+                            )}
                         </div>
                     </div>
                 ))}

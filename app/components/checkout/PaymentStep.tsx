@@ -8,6 +8,23 @@ import { PixIcon } from "../PixIcon";
 import { useEffect, useState } from "react";
 import { getUserPaymentMethods } from "@/app/actions/payment";
 
+interface SavedCard {
+  id: number;
+  brand: string;
+  last4: string;
+}
+
+interface InstallmentOption {
+  installments: number;
+  recommended_message: string;
+}
+
+interface MercadoPagoWindow extends Window {
+  MercadoPago: new (publicKey: string | undefined) => {
+    getInstallments: (params: { amount: string; bin: string }) => Promise<Array<{ payer_costs: InstallmentOption[] }>>;
+  };
+}
+
 export function PaymentStep() {
   const { 
     paymentMethod, setPaymentMethod, 
@@ -20,17 +37,18 @@ export function PaymentStep() {
     total
   } = useCheckout();
 
-  const [savedCards, setSavedCards] = useState<any[]>([]);
+  // 3. Aplicando as tipagens estritas nos estados
+  const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
 
-  const [installmentsOptions, setInstallmentsOptions] = useState<any[]>([]);
+  const [installmentsOptions, setInstallmentsOptions] = useState<InstallmentOption[]>([]);
   const [isLoadingInstallments, setIsLoadingInstallments] = useState(false);
   
   useEffect(() => {
     async function fetchCards() {
       const cards = await getUserPaymentMethods();
       if(Array.isArray(cards)){
-        setSavedCards(cards);
+        setSavedCards(cards as SavedCard[]);
       }
       setIsLoadingCards(false);
     }
@@ -68,11 +86,13 @@ export function PaymentStep() {
   }
 
   const fetchInstallments = async (bin: string) => {
-    if (typeof (window as any).MercadoPago === 'undefined') return;
+    const mpWindow = window as unknown as MercadoPagoWindow;
+    
+    if (typeof mpWindow.MercadoPago === 'undefined') return;
     
     setIsLoadingInstallments(true);
     try {
-      const mp = new (window as any).MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+      const mp = new mpWindow.MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
       
       const response = await mp.getInstallments({
         amount: total.toString(),
@@ -80,7 +100,6 @@ export function PaymentStep() {
       });
 
       if (response && response.length > 0 && response[0].payer_costs) {
-        console.log("teste")
         setInstallmentsOptions(response[0].payer_costs);
       }
     } catch (error) {
@@ -133,7 +152,7 @@ export function PaymentStep() {
           <QrCode size={48} className="mx-auto mb-4 text-[#00B488]" />
           <h3 className="font-bold text-lg mb-2">O pagamento via PIX é rápido e seguro!</h3>
           <p className="text-sm text-gray-600">
-            O QR Code e o código "Copia e Cola" serão gerados na próxima tela assim que você clicar em "Finalizar".
+            O QR Code e o código &quot;Copia e Cola&quot; serão gerados na próxima tela assim que você clicar em &quot;Finalizar&quot;.
           </p>
         </div>
       ) : (
@@ -241,15 +260,19 @@ export function PaymentStep() {
             </div>
           )}
 
-          <div className="md:col-span-2 mt-2">
+          <div className="md:col-span-2 mt-4">
                 <label className="block text-sm font-medium mb-1">Parcelamento *</label>
                 <select 
                   value={cardData.installments} 
                   onChange={(e) => handleCardChange('installments', e.target.value)} 
-                  className="input-custom w-full bg-white cursor-pointer"
+                  disabled={isLoadingInstallments} // Desativa enquanto busca na API
+                  className="input-custom w-full bg-white disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer transition-colors"
                 >
-                  {installmentsOptions.length > 0 ? (
-                    installmentsOptions.map((option: any) => (
+                  {isLoadingInstallments ? (
+                    <option value="">Carregando opções de parcela...</option>
+                  ) : installmentsOptions.length > 0 ? (
+                    // 4. Aqui estava o erro final do 'any'! Substituído pela tipagem correta.
+                    installmentsOptions.map((option: InstallmentOption) => (
                       <option key={option.installments} value={option.installments}>
                           {option.recommended_message} 
                       </option>

@@ -30,6 +30,7 @@ export function DeleteAccountForm({ userId }: { userId: number }) {
                 await signOut({callbackUrl: '/'})
             }
         } catch (error) {
+            console.log("Erro ao deletar conta: ", error)
             setErrorMsg("Falha de comunicação com o servidor.");
         } finally {
             setIsLoading(false);
@@ -76,7 +77,7 @@ export function DeleteAccountForm({ userId }: { userId: number }) {
                     <button
                         type="submit"
                         disabled={isLoading || !password}
-                        className="mt-6 px-6 py-3 bg-red-600 text-white font-bold rounded-md hover:bg-red-700 transition-colors disabled:bg-red-400 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
+                        className="mt-6 px-6 py-3 bg-red-600 text-white font-bold rounded-md hover:bg-red-700 transition-colors disabled:bg-red-400 disabled:cursor-not-allowed flex items-center justify-center min-w-37.5"
                     >
                         {isLoading ? (
                             <span className="flex items-center gap-2">

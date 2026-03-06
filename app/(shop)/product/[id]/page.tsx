@@ -71,7 +71,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     notFound();
   }
 
-  const categoryIds = product.category.map((c: any) => c.id);
+  const categoryIds = product.category.map((c: {id: number}) => c.id);
   const relatedProducts = await getRelatedProducts(product.id, categoryIds);
 
   return (
@@ -92,6 +92,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                  src={product.image_url} 
                  alt={product.name} 
                  fill
+                 className="object-cover"
                />
              ) : (
                <div className="flex items-center justify-center h-full text-gray-400">
@@ -101,7 +102,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           </div>
 
           <div>
-             <ProductDetails product={product as any} /> 
+             <ProductDetails product={product} /> 
           </div>
 
         </div>

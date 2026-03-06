@@ -33,7 +33,7 @@ export function PixQRCodeDisplay({ qrCodeBase64, qrCodeText = "xxxxxxxxxxxxxxxxx
             <div className="bg-black rounded-sm w-full h-full"></div>
             <div className="bg-black rounded-sm w-full h-full"></div>
             <div className="bg-black rounded-sm w-full h-full"></div>
-            <div className="bg-black rounded-sm w-full h-full w-1/2 h-1/2 justify-self-end self-end"></div>
+            <div className="bg-black rounded-sm w-full h-full justify-self-end self-end"></div>
           </div>
         )}
       </div>

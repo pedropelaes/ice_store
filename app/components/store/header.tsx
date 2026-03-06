@@ -17,11 +17,10 @@ interface HeaderProps {
 function SearchBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [term, setTerm] = useState(searchParams.get("search") || "");
 
-  useEffect(() => {
-    setTerm(searchParams.get("search") || "");
-  }, [searchParams]); 
+  const initialSearch = searchParams.get("search") || "";
+
+  const [term, setTerm] = useState(initialSearch);
 
   const handleSearch = () => {
     if(term.trim()) {
@@ -42,7 +41,7 @@ function SearchBar() {
         <input 
           type="search"
           placeholder="Pesquisar" 
-          className="pl-10 pr-4 py-2 rounded-full text-sm outline-none w-[200px] transition-all focus:w-[240px]"
+          className="pl-10 pr-4 py-2 rounded-full text-sm outline-none w-50 transition-all focus:w-60"
           value={term}
           onChange={(e) => setTerm(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -103,7 +102,7 @@ export function Header({user}: HeaderProps) {
 
         <div className="flex items-center gap-6">
           
-          <Suspense fallback={<div className="w-[200px] h-9 bg-white/20 rounded-full animate-pulse" />}>
+          <Suspense fallback={<div className="w-50 h-9 bg-white/20 rounded-full animate-pulse" />}>
              <SearchBar />
           </Suspense>
 

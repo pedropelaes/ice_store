@@ -23,7 +23,14 @@ export interface LowStockProduct {
     }[];
 }
 
+interface StockValueQueryResult {
+    total: number | string; // queryRaw pode retornar string para campos SUM/Decimal
+}
 
+interface SalesByDayQueryResult {
+    date: string;
+    total: number | string;
+}
  
 export const DashboardService = {
     getRecentOrders: async () => {
@@ -77,12 +84,13 @@ export const DashboardService = {
 
             prisma.order.aggregate({
                 _sum: { total_final: true },
-                _count: { id: true }
+                _count: { id: true },
+                where: { status: 'PAID' }
             }),
 
             prisma.user.count({ where: { role: 'USER', active: true } }),
 
-            prisma.$queryRaw<any[]>`
+            prisma.$queryRaw<StockValueQueryResult[]>`
                 SELECT COALESCE(SUM(price * "totalStock"), 0) as total
                 FROM "Product"
                 WHERE active = 'ACTIVE'
@@ -134,17 +142,18 @@ export const DashboardService = {
     },
 
     getSalesByDay: async (): Promise<DailySalesData[]> => {
-        const result = await prisma.$queryRaw<any[]>`
+        const result = await prisma.$queryRaw<SalesByDayQueryResult[]>`
             SELECT 
                 TO_CHAR("orderedAt", 'DD/MM') as date, 
                 SUM("total_final") as total
             FROM "Order"
             WHERE "orderedAt" >= NOW() - INTERVAL '30 days'
+                AND status = 'PAID'
             GROUP BY TO_CHAR("orderedAt", 'DD/MM'), "orderedAt"::DATE
             ORDER BY "orderedAt"::DATE ASC
         `;
 
-        return result.map((r: any) => ({
+        return result.map((r) => ({
             date: r.date,
             total: Number(r.total)
         }));

@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Box, Check, X } from "lucide-react";
-import { useClickOutside } from "@/app/hooks/useClickOutside";
 
 interface LogisticsValues {
     weight: number;
@@ -18,9 +17,9 @@ interface LogisticsCellProps {
 }
 
 export function LogisticsCell({ value, isModified, onSave }: LogisticsCellProps) {
-    const dropdown = useClickOutside<HTMLDivElement>(false);
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
     
-    // Mudança 1: O estado 'draft' agora guarda strings para permitir a digitação livre de decimais ("0.2")
     const [draft, setDraft] = useState({
         weight: value.weight === 0 ? '' : value.weight.toString(),
         length: value.length === 0 ? '' : value.length.toString(),
@@ -29,18 +28,19 @@ export function LogisticsCell({ value, isModified, onSave }: LogisticsCellProps)
     });
 
     useEffect(() => {
-        if (dropdown.isOpen) {
-            setDraft({
-                weight: value.weight === 0 ? '' : value.weight.toString(),
-                length: value.length === 0 ? '' : value.length.toString(),
-                width: value.width === 0 ? '' : value.width.toString(),
-                height: value.height === 0 ? '' : value.height.toString(),
-            });
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
         }
-    }, [value, dropdown.isOpen]);
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isOpen]);
+
 
     const handleSave = () => {
-        // Mudança 2: Na hora de salvar, convertemos as strings de volta para Number
         const cleanDraft = {
             weight: Number(draft.weight) || 0,
             length: Number(draft.length) || 0,
@@ -48,26 +48,29 @@ export function LogisticsCell({ value, isModified, onSave }: LogisticsCellProps)
             height: Number(draft.height) || 0,
         };
         onSave(cleanDraft);
-        dropdown.setIsOpen(false);
+        setIsOpen(false);
     };
 
     const handleCancel = (e: React.MouseEvent) => {
         e.stopPropagation(); 
-        setDraft({
-            weight: value.weight === 0 ? '' : value.weight.toString(),
-            length: value.length === 0 ? '' : value.length.toString(),
-            width: value.width === 0 ? '' : value.width.toString(),
-            height: value.height === 0 ? '' : value.height.toString(),
-        });
-        dropdown.setIsOpen(false);
+        setIsOpen(false);
+        // Opcional: O rascunho será refeito no próximo clique de abrir, então nem precisamos resetar aqui
     };
 
     const hasValues = value.weight > 0 && value.length > 0;
 
     return (
-        <div className="relative" ref={dropdown.ref}>
+        <div className="relative" ref={dropdownRef}>
             <div 
-                onClick={() => dropdown.setIsOpen(true)}
+                onClick={() => {
+                    setDraft({
+                        weight: value.weight === 0 ? '' : value.weight.toString(),
+                        length: value.length === 0 ? '' : value.length.toString(),
+                        width: value.width === 0 ? '' : value.width.toString(),
+                        height: value.height === 0 ? '' : value.height.toString(),
+                    });
+                    setIsOpen(true);
+                }}
                 className={`flex items-center gap-2 px-2 py-1 -ml-2 rounded cursor-pointer border border-transparent hover:border-gray-200 hover:bg-white transition-colors
                     ${isModified ? 'bg-yellow-50 border-yellow-200 text-yellow-900' : ''}
                 `}
@@ -82,14 +85,13 @@ export function LogisticsCell({ value, isModified, onSave }: LogisticsCellProps)
                 )}
             </div>
 
-            {dropdown.isOpen && (
+            {isOpen && (
                 <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 shadow-xl rounded-lg p-4 z-50 w-64">
                     <h4 className="text-sm font-bold mb-3 text-gray-800 border-b pb-2">Logística</h4>
                     
                     <div className="grid grid-cols-2 gap-3 mb-4 text-black">
                         <div>
                             <label className="text-xs text-gray-500 mb-1 block">Peso (kg)</label>
-                            {/* Mudança 3: Removemos o parseFloat do onChange */}
                             <input 
                                 type="number" step="0.01" min="0"
                                 value={draft.weight} 

@@ -5,9 +5,9 @@ export const generateVerificationToken = async (email: string) => {
     const token = v4();
     const expires = new Date(new Date().getTime() + 3600 * 1000); // Tempo de 1 hora para expirar
 
-    const existingToken = await prisma.verificationToken.findFirst({
+    /*const existingToken = await prisma.verificationToken.findFirst({
         where: { email }
-    });
+    });*/
 
     const verificationToken = await prisma.verificationToken.create({
         data: {

@@ -6,8 +6,17 @@ import { Product, ProductItem, Size } from "@/app/generated/prisma";
 import { addToCart } from "@/app/actions/cart";
 import { useRouter } from "next/navigation";
 
+export type SerializedProduct = Omit<Product, 'price' | 'discount_price' | 'weight' | 'length' | 'width' | 'height'> & {
+  price: number;
+  discount_price: number | null;
+  weight: number | null;
+  length: number | null;
+  width: number | null;
+  height: number | null;
+};
+
 interface ProductDetailsProps {
-  product: Product & {
+  product: SerializedProduct & {
     items: ProductItem[];
     category: { name: string }[];
   };
@@ -62,7 +71,7 @@ export function ProductDetails({ product }: ProductDetailsProps) {
   const handleManualQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!selectedSize) return;
 
-    let newValue = parseInt(e.target.value);
+    const newValue = parseInt(e.target.value);
     const maxStock = getStockForSize(selectedSize);
 
     if (isNaN(newValue) || newValue < 1) {
@@ -119,12 +128,11 @@ export function ProductDetails({ product }: ProductDetailsProps) {
         )}
       </div>
 
-      {/* Seletor de Tamanho */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-3">
           <span className="text-sm font-medium text-gray-900">Selecionar Tamanho</span>
-          {/* Futuro: Tabela de Medidas */}
-          <button className="text-xs text-gray-500 underline hover:text-black">Guia de medidas</button>
+          
+          {/*<button className="text-xs text-gray-500 underline hover:text-black">Guia de medidas</button>*/}
         </div>
         
         <div className="flex flex-wrap gap-3">
@@ -145,7 +153,7 @@ export function ProductDetails({ product }: ProductDetailsProps) {
                  className={`
                    w-12 h-12 flex items-center justify-center border rounded-md text-sm font-medium transition-all
                    ${isOutOfStock 
-                      ? 'bg-gray-100 text-gray-300 cursor-not-allowed decoration-slice line-through' 
+                      ? 'bg-gray-100 text-gray-300 cursor-not-allowed box-decoration-slice line-through' 
                       : isSelected
                         ? 'bg-black text-white border-black ring-2 ring-black ring-offset-2'
                         : 'bg-white text-gray-900 border-gray-200 hover:border-gray-900'

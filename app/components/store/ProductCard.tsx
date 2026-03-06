@@ -1,12 +1,13 @@
 import { ImageOff } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 interface ProductCardProps {
   product: {
     id: number;
     name: string;
-    price: any; // Prisma Decimal vem como objeto ou string, trataremos como Number
-    discount_price?: any | null;
+    price: number;
+    discount_price?: number | null;
     image_url: string;
     category?: { name: string }[];
     items?: { quantity: number }[];
@@ -32,11 +33,12 @@ export function ProductCard({ product }: ProductCardProps) {
     <Link href={`/product/${product.id}`} className="group block h-full">
       <div className="flex flex-col h-full bg-white border border-gray-100 rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300">
         
-        <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
+        <div className="relative aspect-4/5 bg-gray-100 overflow-hidden">
           {product.image_url ? (
-            <img 
+            <Image 
               src={product.image_url} 
               alt={product.name} 
+              fill
               className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${isOutOfStock ? 'opacity-50 grayscale' : ''}`}
             />
           ) : (

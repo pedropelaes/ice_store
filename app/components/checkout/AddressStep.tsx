@@ -6,13 +6,14 @@ import { useEffect, useState } from "react";
 import { ShippingOption, ShippingOptions } from "./ShippingOptions";
 import { MapPin } from "lucide-react";
 import { AddressForm } from "./AdressForm";
+import { Address } from "@/app/generated/prisma";
 
 
 export function AddressStep() {
     const { deliveryData, setDeliveryData, setShippingFee, saveAddress, setSaveAddress } = useCheckout();
     const [selectedShippingId, setSelectedShippingId] = useState<number | null>(null);
     
-      const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+      const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
       const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
       
       useEffect(() => {
@@ -30,7 +31,7 @@ export function AddressStep() {
         fetchAddresses();
       }, []);
     
-      const handleSelectSavedAddress = (addr: any) => {
+      const handleSelectSavedAddress = (addr: Address) => {
         setDeliveryData({
           cep: addr.zip_code,
           street: addr.street,

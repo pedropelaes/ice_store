@@ -26,7 +26,7 @@ export function Pagination({ currentPage, totalPages }: PaginationProps) {
   const renderPageNumbers = () => {
     const pages = [];
     let startPage = Math.max(1, currentPage - 2); // Sempre mostra no máximo 5 botões para não quebrar layout
-    let endPage = Math.min(totalPages, startPage + 4);
+    const endPage = Math.min(totalPages, startPage + 4);
     
     if (endPage - startPage < 4) {
       startPage = Math.max(1, endPage - 4);

@@ -3,7 +3,6 @@ import { NextAuthOptions } from "next-auth"
 import prisma from "@/app/lib/prisma"
 import bcrypt from "bcrypt"
 import { z } from "zod"
-import { PrismaAdapter } from "@auth/prisma-adapter"
 
 const loginSchema = z.object({
   email: z.string().email(),

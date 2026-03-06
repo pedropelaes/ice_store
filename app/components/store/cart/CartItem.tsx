@@ -3,6 +3,7 @@
 import { Trash2, AlertCircle, Loader2 } from "lucide-react";
 import { useTransition } from "react";
 import { updateCartItemQuantity, removeCartItem } from "@/app/actions/cart"; // Importe as actions
+import Image from "next/image";
 
 interface CartItemProps {
   item: {
@@ -51,16 +52,22 @@ export function CartItemCard({ item }: CartItemProps) {
   return (
     <div className={`flex items-center gap-4 py-6 border-b border-gray-100 last:border-0 ${isOutOfStock ? 'opacity-60 grayscale' : ''}`}>
       
-      {/* Imagem */}
-      <div className="w-24 h-24 bg-gray-100 rounded-md flex-shrink-0 overflow-hidden border border-gray-200">
+      <div className="relative w-24 h-24 bg-gray-100 rounded-md shrink-0 overflow-hidden border border-gray-200">
         {item.product.image_url ? (
-          <img src={item.product.image_url} alt={item.product.name} className="w-full h-full object-cover" />
+          <Image 
+            src={item.product.image_url} 
+            alt={item.product.name} 
+            fill
+            sizes="96px" // w-24 = 6rem = 96px
+            className="object-cover" 
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">Sem foto</div>
+          <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">
+            Sem foto
+          </div>
         )}
       </div>
 
-      {/* Detalhes do Produto */}
       <div className="flex-1 flex flex-col justify-between h-full">
         <div>
           <h3 className="text-base font-bold text-gray-900 truncate">{item.product.name}</h3>
@@ -69,7 +76,6 @@ export function CartItemCard({ item }: CartItemProps) {
             <span>Preço: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.unit_price)}</span>
           </div>
 
-          {/* Avisos Visuais de Estoque */}
           {isOutOfStock && (
             <p className="text-red-600 text-xs flex items-center gap-1 mt-2 font-semibold">
               <AlertCircle size={14} /> Produto esgotado

@@ -1,5 +1,6 @@
 import { CartItemType } from "@/app/context/CheckoutContext";
 import { ImageIcon } from "lucide-react";
+import Image from "next/image";
 
 interface OrderItemsReviewProps {
   cartItems: CartItemType[];
@@ -14,12 +15,13 @@ export function OrderItemsReview({ cartItems }: OrderItemsReviewProps) {
         {cartItems.map((item) => (
           <div key={item.id} className="flex items-center gap-4">
             
-            <div className="w-12 h-12 bg-gray-200 rounded-md flex items-center justify-center shrink-0 overflow-hidden relative">
+            <div className="relative w-12 h-12 bg-gray-200 rounded-md flex items-center justify-center shrink-0 overflow-hidden">
               {item.product.image_url ? (
-                <img 
+                <Image 
                   src={item.product.image_url} 
                   alt={item.product.name}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               ) : (
                 <ImageIcon size={20} className="text-gray-400" />

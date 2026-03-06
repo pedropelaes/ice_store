@@ -1,6 +1,7 @@
+"use client"
+
 import { ProductItem, SIZES } from "@/app/admin/(dashboard)/products/page";
-import { useClickOutside } from "@/app/hooks/useClickOutside";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Check } from "lucide-react";
 
 export function StockCell({ 
@@ -12,17 +13,25 @@ export function StockCell({
     onSave: (newItems: ProductItem[]) => void,
     isModified: boolean
 }) {
-    const dropdown = useClickOutside<HTMLDivElement>();
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     const [draftValue, setDraftValue] = useState<ProductItem[]>([]);
 
-    // Sincroniza o rascunho com o valor real SEMPRE que o dropdown abre
+    // 2. Lógica nativa para fechar ao clicar fora
     useEffect(() => {
-        if (dropdown.isOpen) {
-            // Deep copy para evitar mutação por referência
-            setDraftValue(JSON.parse(JSON.stringify(value)));
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
         }
-    }, [dropdown.isOpen, value]);
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isOpen]);
+
+    // O useEffect problemático de sincronização foi removido daqui!
 
     // Calcula o total apenas para exibir no resumo
     const totalQuantity = value.reduce((acc, item) => acc + item.quantity, 0);
@@ -30,26 +39,24 @@ export function StockCell({
     const handleConfirm = (e: React.MouseEvent) => {
         e.stopPropagation();
         onSave(draftValue); 
-        dropdown.setIsOpen(false);
+        setIsOpen(false);
     };
 
     const handleCancel = (e: React.MouseEvent) => {
         e.stopPropagation();
-        dropdown.setIsOpen(false);
+        setIsOpen(false);
     };
 
     // Função para atualizar a quantidade de um tamanho específico
     const handleChangeSize = (size: string, newQty: string) => {
         const qty = parseInt(newQty) || 0;
         
-        // Cria uma cópia do array atual
         let newItems = [...draftValue];
         
         // Caso 1: Usuário está tentando adicionar/editar "UNIC"
         if (size === "UNIC" && qty > 0) {
-            newItems = newItems.filter(i => i.size === "UNIC");  // Removemos TODOS os outros tamanhos, deixando apenas o UNIC
+            newItems = newItems.filter(i => i.size === "UNIC");  
             
-            // Se já existia UNIC, atualizamos. Se não, criamos.
             const existingIndex = newItems.findIndex(i => i.size === "UNIC");
             if (existingIndex >= 0) {
                 newItems[existingIndex] = { ...newItems[existingIndex], quantity: qty };
@@ -60,28 +67,23 @@ export function StockCell({
         
         // Caso 2: Usuário está tentando adicionar outro tamanho (P, M, G...)
         else if (size !== "UNIC") {
-            if (qty > 0) {    // Se a quantidade for > 0, precisamos garantir que NÃO existe UNIC na lista
+            if (qty > 0) {    
                 const hasUnic = newItems.some(i => i.size === "UNIC" && i.quantity > 0);
                 
-                // Bloquear silenciosamente (não faz nada)
-                // if (hasUnic) return; 
-
-                //  Remover o UNIC automaticamente para permitir o novo tamanho
                 if (hasUnic) {
                    newItems = newItems.filter(i => i.size !== "UNIC");
                 }
             }
 
-            // Lógica padrão de atualização
             const existingIndex = newItems.findIndex(i => i.size === size);
             if (existingIndex >= 0) {
                 newItems[existingIndex] = { ...newItems[existingIndex], quantity: qty };
             } else {
-                newItems.push({ size: size as any, quantity: qty });
+                newItems.push({ size: size as ProductItem["size"], quantity: qty });
             }
         }
         
-        // Caso 3: Zerando o UNIC (apenas atualiza normal, pois 0 não conflita)
+        // Caso 3: Zerando o UNIC
         else if (size === "UNIC" && qty === 0) {
              const existingIndex = newItems.findIndex(i => i.size === "UNIC");
              if (existingIndex >= 0) {
@@ -93,13 +95,19 @@ export function StockCell({
     };
 
     return (
-        <div className="relative h-full flex items-center" ref={dropdown.ref}>
+        <div className="relative h-full flex items-center" ref={dropdownRef}>
             <div 
-                onClick={() => dropdown.setIsOpen(!dropdown.isOpen)}
+                onClick={() => {
+                    // 3. Criamos o rascunho apenas se o menu estiver abrindo
+                    if (!isOpen) {
+                        setDraftValue(JSON.parse(JSON.stringify(value)));
+                    }
+                    setIsOpen(!isOpen);
+                }}
                 className={`
-                    cursor-pointer min-h-[40px] p-2 rounded-md w-full flex flex-wrap gap-1 items-center
+                    cursor-pointer min-h-10 p-2 rounded-md w-full flex flex-wrap gap-1 items-center
                     border transition-all
-                    ${dropdown.isOpen ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent hover:bg-gray-100'}
+                    ${isOpen ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent hover:bg-gray-100'}
                     ${isModified ? 'bg-yellow-50 border-yellow-200' : ''}
                 `}
             >
@@ -114,8 +122,8 @@ export function StockCell({
                 )}
             </div>
 
-            {dropdown.isOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-3 min-w-[200px]">
+            {isOpen && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-3 min-w-50">
                     <div className="flex flex-col gap-2">
                         <span className="text-xs font-semibold text-gray-500 uppercase mb-1">Gerenciar Estoque</span>
                         
@@ -126,12 +134,12 @@ export function StockCell({
                             const hasUnic = draftValue.some(v => v.size === "UNIC" && v.quantity > 0);
                             const hasOthers = draftValue.some(v => v.size !== "UNIC" && v.quantity > 0);
                             const isConflict = (size === "UNIC" && hasOthers) || (size !== "UNIC" && hasUnic);
+                            
                             return (
                                 <div key={size} className="flex items-center justify-between gap-3">
                                     <span className="text-sm font-medium w-8 text-gray-700">{size}</span>
                                     <input 
                                         type="number" 
-                                        //disabled={isConflict}
                                         min={0}
                                         className={`
                                             w-full h-8 px-2 border rounded text-sm focus:outline-none focus:border-blue-500
@@ -139,7 +147,7 @@ export function StockCell({
                                         `}
                                         value={currentQty}
                                         onChange={(e) => handleChangeSize(size, e.target.value)}
-                                        onClick={(e) => e.stopPropagation()} // Evita fechar ao clicar no input
+                                        onClick={(e) => e.stopPropagation()} 
                                     />
                                 </div>
                             )

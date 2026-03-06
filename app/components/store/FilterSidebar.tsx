@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Size } from "@/app/generated/prisma";
 
 interface FilterSidebarProps {
@@ -63,7 +63,7 @@ export function FilterSidebar({ categories }: FilterSidebarProps) {
   };
 
   return (
-    <aside className="w-full md:w-64 flex-shrink-0 bg-[#999999] rounded-xl p-4 text-white h-fit shadow-md">
+    <aside className="w-full md:w-64 shrink-0 bg-[#999999] rounded-xl p-4 text-white h-fit shadow-md">
       <div className="flex items-center justify-between mb-4 px-2">
         <h2 className="font-bold text-2xl">Filtros</h2>
         {(activeCategory || activeSize || activeMinPrice) && (

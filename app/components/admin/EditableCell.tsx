@@ -3,13 +3,16 @@
 import { Pencil, Check, X, Plus } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
+
+type CellValue = string | number | string[] | number[] | null | undefined;
+
 interface EditableCellProps {
-  value: any;
+  value: CellValue;
   isModified?: boolean;
   type?: "text" | "number" | "select" | "textarea" | "multi-select";
-  options?: { label: string; value: string }[]; // Para selects
-  onSave: (newValue: any) => void;
-  renderValue?: (value: any) => React.ReactNode; // Caso queira renderizar algo customizado (ex: Badge de status)
+  options?: { label: string; value: string | number }[]; // options.value também pode ser number
+  onSave: (newValue: CellValue) => void;
+  renderValue?: (value: CellValue) => React.ReactNode; 
   className?: string;
 }
 
@@ -23,10 +26,10 @@ export function EditableCell({
   className = ""
 }: EditableCellProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [tempValue, setTempValue] = useState(value);
+  const [tempValue, setTempValue] = useState<CellValue>(value);
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(null);
 
-  const [inputValue, setInputValue] = useState(""); // input de busca/criação do multi-select
+  const [inputValue, setInputValue] = useState(""); 
 
   useEffect(() => {
     setTempValue(value);
@@ -59,40 +62,39 @@ export function EditableCell({
     if (!val) return;
     const currentArray = Array.isArray(tempValue) ? tempValue : [];
     
-    // Se for string (novo) ou number (existente), adiciona se não existir
-    if (!currentArray.includes(val)) {
-        setTempValue([...currentArray, val]);
+    // Converte para string para garantir comparação se os tipos vierem misturados
+    if (!currentArray.map(String).includes(String(val))) {
+        // As asserções 'as' são necessárias aqui pois o TS não tem certeza 
+        // qual array específico estamos manipulando
+        setTempValue([...(currentArray as (string | number)[]), val] as CellValue);
     }
-    setInputValue(""); // Limpa o input após adicionar
+    setInputValue(""); 
   };
 
   const removeValue = (valToRemove: string | number) => {
     const currentArray = Array.isArray(tempValue) ? tempValue : [];
-    setTempValue(currentArray.filter((v: any) => v !== valToRemove));
+    setTempValue(currentArray.filter((v) => String(v) !== String(valToRemove)) as CellValue);
   };
 
   const filteredOptions = options.filter(opt => 
     opt.label.toLowerCase().includes(inputValue.toLowerCase()) &&
-    !(Array.isArray(tempValue) ? tempValue : []).includes(opt.value) // Esconde o que já foi selecionado
+    !(Array.isArray(tempValue) ? tempValue : []).map(String).includes(String(opt.value))
   );
 
   const exactMatch = options.find(opt => opt.label.toLowerCase() === inputValue.toLowerCase());
 
-  // MODO EDIÇÃO
   if (isEditing) {
     return (
       <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
         {type === "multi-select" ? (
             <div className="flex flex-col gap-2">
-                {/* 1. Lista de Tags Selecionadas */}
-                <div className="flex flex-wrap gap-1 mb-1 max-h-[100px] overflow-y-auto">
-                    {Array.isArray(tempValue) && tempValue.length > 0 ? tempValue.map((val: any, idx: number) => {
-                        // Tenta achar o label nas opções, se não achar, usa o próprio valor (caso seja nova categoria criada)
-                        const label = options.find(o => String(o.value) === String(val))?.label || val;
+                <div className="flex flex-wrap gap-1 mb-1 max-h-25 overflow-y-auto">
+                    {Array.isArray(tempValue) && tempValue.length > 0 ? tempValue.map((val, idx) => {
+                        const label = options.find(o => String(o.value) === String(val))?.label || String(val);
                         return (
                             <span key={idx} className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs border border-blue-200 font-medium">
                                 {label}
-                                <button onMouseDown={(e) => {e.preventDefault(); removeValue(val)}} className="text-blue-400 hover:text-red-500">
+                                <button onMouseDown={(e) => {e.preventDefault(); removeValue(val as string | number)}} className="text-blue-400 hover:text-red-500">
                                     <X size={12} />
                                 </button>
                             </span>
@@ -100,7 +102,6 @@ export function EditableCell({
                     }) : <span className="text-gray-400 text-xs italic p-1">Nenhuma selecionada</span>}
                 </div>
 
-                {/* 2. Input de Busca / Criação */}
                 <div className="relative">
                     <input 
                         type="text"
@@ -114,17 +115,15 @@ export function EditableCell({
                                 if (exactMatch) {
                                     addValue(exactMatch.value);
                                 } else if (inputValue.trim().length > 0) {
-                                    addValue(inputValue.trim()); // Cria nova categoria (String)
+                                    addValue(inputValue.trim()); 
                                 }
                             }
                         }}
                     />
 
-                    {/* 3. Lista Dropdown Flutuante */}
                     {(inputValue.length > 0 || filteredOptions.length > 0) && (
-                         <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-[150px] overflow-y-auto z-10">
+                         <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-37.5 overflow-y-auto z-10">
                             
-                            {/* Opções Existentes Filtradas */}
                             {filteredOptions.map(opt => (
                                 <div 
                                     key={opt.value}
@@ -135,13 +134,12 @@ export function EditableCell({
                                 </div>
                             ))}
 
-                            {/* Opção de CRIAR NOVO (só aparece se digitou algo e não é match exato) */}
                             {inputValue.trim().length > 0 && !exactMatch && (
                                 <div 
                                     className="px-3 py-2 hover:bg-green-50 cursor-pointer text-sm text-green-700 flex items-center gap-2 border-t"
                                     onMouseDown={(e) => { e.preventDefault(); addValue(inputValue.trim()); }}
                                 >
-                                    <Plus size={14}/> Criar "<strong>{inputValue}</strong>"
+                                    <Plus size={14}/> Criar &quot;<strong>{inputValue}</strong>&quot;
                                 </div>
                             )}
                             
@@ -154,11 +152,11 @@ export function EditableCell({
             </div>
         ) : type === "select" ? (
           <select
-            ref={inputRef as any}
-            value={tempValue}
+            ref={inputRef as React.RefObject<HTMLSelectElement>} // Corrigido a Ref
+            value={tempValue as string | number}
             onChange={(e) => setTempValue(e.target.value)}
-            className="p-1 border rounded text-sm w-full min-w-[100px] bg-white text-black"
-            onBlur={handleSave} // Salva ao clicar fora (opcional)
+            className="p-1 border rounded text-sm w-full min-w-25 bg-white text-black"
+            onBlur={handleSave}
           >
             {options.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -168,20 +166,20 @@ export function EditableCell({
           </select>
         ) : type === "textarea" ? (
           <textarea
-            ref={inputRef as any}
-            value={tempValue}
+            ref={inputRef as React.RefObject<HTMLTextAreaElement>} // Corrigido a Ref
+            value={tempValue as string}
             onChange={(e) => setTempValue(e.target.value)}
-            className="p-1 border rounded text-sm w-full min-w-[200px] bg-white text-black"
+            className="p-1 border rounded text-sm w-full min-w-50 bg-white text-black"
             rows={2}
           />
         ) : (
           <input
-            ref={inputRef as any}
+            ref={inputRef as React.RefObject<HTMLInputElement>} // Corrigido a Ref
             type={type}
-            value={tempValue}
+            value={tempValue as string | number}
             onChange={(e) => setTempValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="p-1 border rounded text-sm w-full min-w-[80px] bg-white text-black"
+            className="p-1 border rounded text-sm w-full min-w-20 bg-white text-black"
           />
         )}
         
@@ -193,14 +191,13 @@ export function EditableCell({
     );
   }
 
-  // MODO VISUALIZAÇÃO
   return (
     <div 
-      className={`group flex items-center justify-between gap-2 cursor-pointer min-h-[30px] pr-2 rounded hover:bg-gray-100 -ml-2 pl-2 ${className}`}
+      className={`group flex items-center justify-between gap-2 cursor-pointer min-h-7.5 pr-2 rounded hover:bg-gray-100 -ml-2 pl-2 ${className}`}
       onClick={() => setIsEditing(true)}
     >
       <div className="truncate flex-1">
-        {renderValue ? renderValue(value) : value}
+        {renderValue ? renderValue(value) : (value as string | number)}
       </div>
       {isModified ? (
          <div className="bg-yellow-200 p-1 rounded-full text-yellow-700" title="Alteração pendente">

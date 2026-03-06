@@ -17,7 +17,7 @@ export function AdminToolbar({ searchValue, onSearchChange, children }: AdminToo
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black" size={18}/>
               <input 
                  type="search" 
-                 className="input-custom pl-10 placeholder-black/70 w-full min-w-[200px] md:min-w-[300px]" 
+                 className="input-custom pl-10 placeholder-black/70 w-full min-w-50 md:min-w-75" 
                  placeholder="Pesquisar"
                  value={searchValue}
                  onChange={(e) => onSearchChange(e.target.value)}

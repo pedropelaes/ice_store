@@ -49,6 +49,7 @@ export function ShippingOptions({ cep, selectedOptionId, onSelect }: ShippingOpt
     } else {
       setOptions([]); 
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cleanCep]);
 
   if (cleanCep.length !== 8) return null;

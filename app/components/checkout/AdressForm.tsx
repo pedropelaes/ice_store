@@ -39,6 +39,7 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
       
       handleCepChange(mockEvent);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,7 +89,7 @@ export function AddressForm({ data, onChange, saveAddress, onSaveAddressChange }
   };
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.toUpperCase().replace(/[^A-Z0-9/-]/g, '');
+    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9/-]/g, '');
     onChange("number", value);
   };
 
