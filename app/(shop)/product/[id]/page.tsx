@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { ProductCard } from "@/app/components/store/ProductCard";
 import { serializeProduct } from "@/app/(shop)/page";
+import Image from "next/image";
+import { ProductReviews } from "@/app/components/store/product/ProductReviews";
 
 async function getProduct(id: string) {
   const productId = parseInt(id);
@@ -76,7 +78,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     <div className="bg-white min-h-screen pb-20">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         
-        {/* Botão Voltar */}
         <div className="mb-6">
            <Link href="/catalog" className="inline-flex items-center text-sm text-gray-500 hover:text-black transition-colors">
               <ChevronLeft size={16} className="mr-1" /> Voltar para a loja
@@ -84,14 +85,13 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-20">
-          
-          {/* COLUNA ESQUERDA: Imagem */}
-          <div className="relative aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden border border-gray-100">
+
+          <div className="relative aspect-4/5 bg-gray-100 rounded-lg overflow-hidden border border-gray-100">
              {product.image_url ? (
-               <img 
+               <Image 
                  src={product.image_url} 
                  alt={product.name} 
-                 className="w-full h-full object-cover"
+                 fill
                />
              ) : (
                <div className="flex items-center justify-center h-full text-gray-400">
@@ -100,14 +100,16 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
              )}
           </div>
 
-          {/* COLUNA DIREITA: Detalhes Interativos */}
           <div>
              <ProductDetails product={product as any} /> 
-             {/* 'as any' temporário para bypassar checagem estrita de Decimal vs number na tipagem rápida, 
-                 mas o objeto já foi serializado no getProduct */}
           </div>
 
         </div>
+
+        <div>
+            <ProductReviews productId={product.id}            
+            />
+          </div>
         
         {relatedProducts.length > 0 && (
           <div className="border-t border-gray-100 pt-12">

@@ -6,7 +6,7 @@ import Image from "next/image";
 import { OrderStatus, Size } from "@/app/generated/prisma";
 import PasswordModal from "../../modals/PasswordModal";
 import { uploadImage } from "@/app/lib/upload-image";
-import { publishProductReview, Review } from "@/app/actions/publishReview";
+import { publishProductReview, Review } from "@/app/actions/review";
 
 type OrderItem = {
     id: number;

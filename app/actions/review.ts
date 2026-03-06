@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { getAuthenticatedUser } from "../lib/get-user";
 import prisma from "@/app/lib/prisma"; 
+import { success } from "zod";
 
 export interface Review {
         rating: number;
@@ -62,5 +63,25 @@ export async function publishProductReview(review: Review) {
     }catch(error){
         console.error("Erro ao publicar review: ", error);
         return { success: false, error: "Erro interno ao publicar avaliação." }
+    }
+}
+
+export async function getProductReviews(productId: number) {
+    try{
+        const reviews = await prisma.review.findMany({
+            where: { productId },
+            include: {
+                user: {
+                    select: { name: true, lastName: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        if (reviews.length === 0) return [];
+    
+        return reviews;
+    }catch(error){
+        console.error("Erro ao buscar reviews: ", error);
+        return [];
     }
 }
