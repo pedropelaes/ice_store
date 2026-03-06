@@ -206,8 +206,8 @@ export function OrderCard({ order, reviewedProductIds }: { order: OrderProp, rev
 
                                     {(order.status === 'PAID' || order.status === 'SHIPPED') && (
                                         hasReviewed ? (
-                                            <div className="ml-auto mt-2 sm:mt-0 flex flex-col items-center justify-center gap-1.5 bg-gray-200 text-gray-500 font-bold py-2 px-4 rounded-lg text-sm shadow-sm whitespace-nowrap cursor-not-allowed">
-                                                <span>
+                                            <div className="ml-auto mt-2 sm:mt-0 flex flex-row items-center justify-center gap-1.5 bg-gray-200 text-gray-500 font-bold py-2 px-4 rounded-lg text-sm shadow-sm whitespace-nowrap cursor-not-allowed">
+                                                <span className="flex items-center gap-1">
                                                     <Star size={16} className="fill-gray-400 text-gray-400" />
                                                     Avaliado
                                                 </span>

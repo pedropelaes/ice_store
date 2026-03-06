@@ -108,7 +108,7 @@ export async function deleteReview(productId: number) {
         }
         
         revalidatePath("/profile/orders")
-        revalidatePath(`/product`)
+        revalidatePath(`/product/`)
         
         return { success: true, message:"Avaliação apagada." }
     }catch(error){
