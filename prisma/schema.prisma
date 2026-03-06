@@ -45,6 +45,12 @@ enum Size {
   UNIC
 }
 
+model PromoBanner {
+  id            Int           @id   @default(autoincrement())
+  image_url     String        
+  route         String
+}
+
 // User-related
 
 model User {

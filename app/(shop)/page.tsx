@@ -1,6 +1,7 @@
 import { ProductRow } from "@/app/components/store/ProductRow";
 import prisma from "@/app/lib/prisma";
 import Link from "next/link";
+import Image from "next/image";
 
 // Função auxiliar para converter os dados do Prisma para o Front-end
 export const serializeProduct = (product: any) => ({
@@ -18,7 +19,7 @@ export const serializeProduct = (product: any) => ({
 });
 
 async function getHomeData() {
-  const [categories, newArrivalsRaw, bestSellersRaw] = await Promise.all([
+  const [categories, newArrivalsRaw, bestSellersRaw, banner] = await Promise.all([
     prisma.category.findMany({
       take: 6,
       orderBy: { products: {_count: 'desc'}}
@@ -42,21 +43,43 @@ async function getHomeData() {
         category: true,
         items: true
       }
-    })
+    }),
+
+    prisma.promoBanner.findFirst({
+      orderBy: { id: 'desc' }
+    }),
   ]);
 
   const newArrivals = newArrivalsRaw.map(serializeProduct);
   const bestSellers = bestSellersRaw.map(serializeProduct);
 
-  return {categories, newArrivals, bestSellers};
+  return {categories, newArrivals, bestSellers, banner};
 }
 
 export default async function Home() {
-  const {categories, newArrivals, bestSellers} = await getHomeData();
+  const {categories, newArrivals, bestSellers, banner} = await getHomeData();
 
   return (
     <div className="flex min-h-screen justify-center bg-white">
       <main className="flex w-full max-w-7xl flex-col py-12 px-8 text-black">
+
+      {banner && (
+          <section className="w-full mb-12 animate-fade-in-up">
+            
+            <Link href={banner.route} className="block group">
+              <div className="relative w-full aspect-[16/7] md:aspect-[21/6] rounded-2xl overflow-hidden shadow-md group-hover:shadow-xl transition-shadow">
+                <Image
+                  src={banner.image_url}
+                  alt="Banner Promocional"
+                  fill
+                  priority 
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  sizes="(max-width: 1280px) 100vw, 1280px"
+                />
+              </div>
+            </Link>
+          </section>
+        )}
 
         <ProductRow 
           title="Mais vendidos" 

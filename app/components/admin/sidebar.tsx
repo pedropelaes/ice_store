@@ -7,6 +7,7 @@ const menuItems = [
   { name: "Dashboard", path: "/admin/dashboard" },
   { name: "Produtos", path: "/admin/products" },
   { name: "Pedidos", path: "/admin/orders" },
+  { name: "Modificar Banner", path: "/admin/update-banner" }
 ];
 
 export default function Sidebar({ isOpen }: { isOpen: boolean }) {
