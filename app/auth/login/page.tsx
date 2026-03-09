@@ -6,7 +6,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-export default function loginPage(){
+export default function LoginPage(){
     const router = useRouter();
     const [formData, setFormData] = useState({ // estados para formularios
             email: "",
@@ -73,6 +73,7 @@ export default function loginPage(){
             }
         }catch(error){
             setError("Erro inesperado. Tente novamente.");
+            console.log(error);
             setLoading(false);
         }
     }
@@ -93,9 +94,10 @@ export default function loginPage(){
             }else{
                 alert("Um e-mail de redefinição foi enviado para sua conta");
             }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        }catch (err: any) {
-            setError(err.message);
+        }catch (err: unknown) {
+            console.log(err);
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            setError(errorMessage);
         }
     }
 
@@ -136,11 +138,11 @@ export default function loginPage(){
                     </div>
 
                     <div className="flex items-center w-full max-w-xl mb-2">
-                        <div className="flex-grow h-px bg-gray-400"></div> 
+                        <div className="grow h-px bg-gray-400"></div> 
                         
                         <span className="px-3 text-gray-500 text-sm font-serif">OU</span>
                         
-                        <div className="flex-grow h-px bg-gray-400"></div>
+                        <div className="grow h-px bg-gray-400"></div>
                     </div>
 
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-xl">
@@ -154,7 +156,7 @@ export default function loginPage(){
                             <label className="mb-1 font-medium text-black">Senha *</label>
                             <div className="relative">
                                 <input name="password" type={showPassword ? "text" : "password"} value={formData.password} 
-                                placeholder="Digite sua senha" onChange={handleChange} className={`w-full p-3 rounded-xl outline-none transition-all border-2 input-custom w-full pr-10 ${error ? "border-red-500" : ""}`} required 
+                                placeholder="Digite sua senha" onChange={handleChange} className={`w-full p-3 rounded-xl outline-none transition-all border-2 input-custom pr-10 ${error ? "border-red-500" : ""}`} required 
                                 />
                                 
                                 <button

@@ -77,9 +77,10 @@ function ResetPasswordForm() {
             }
 
             setSuccess(true);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            console.log(err);
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }

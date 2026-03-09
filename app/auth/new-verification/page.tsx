@@ -1,45 +1,49 @@
 "use client"
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-export default function verifyPage(){
+export default function VerifyPage(){
     const searchParams = useSearchParams();
     const token = searchParams.get("token");
 
-    const [error, setError] = useState<string | undefined>();
+    const [error, setError] = useState<string | undefined>(
+        !token ? "Token não encontrado na URL." : undefined
+    );
     const [success, setSuccess] = useState<string | undefined>();
-
-    const onSubmit = useCallback(async () => {
-        if (success || error) return;
-
-        if(!token){
-            setError("Token não encontrado.");
-            return;
-        }
-
-        try{
-            const res = await fetch("/api/auth/verify-token", {
-                method: "POST",
-                headers: { "Content-type": "application/json" },
-                body: JSON.stringify({ token }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                setError(data.error || "Algo deu errado.");
-            } else {
-                setSuccess(data.success);
-            }
-        }catch(err){
-            setError("Erro de conexão ao verificar e-mail.");
-        }
-    }, [token, success, error]);
+    
+    const hasFetched = useRef(false);
 
     useEffect(() => {
-        onSubmit();
-    }, [onSubmit]);
+        if (!token || hasFetched.current) return;
+        
+        hasFetched.current = true;
+
+        const verifyToken = async () => {
+            try {
+                const res = await fetch("/api/auth/verify-token", {
+                    method: "POST",
+                    headers: { "Content-type": "application/json" },
+                    body: JSON.stringify({ token }),
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    setError(data.error || "Algo deu errado.");
+                } else {
+                    setSuccess(data.success);
+                }
+            } catch(err: unknown) {
+                console.log(err);
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                setError(`Erro de conexão ao verificar e-mail. ${errorMessage}`);
+            }
+        };
+
+        verifyToken();
+        
+    }, [token]);
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-white text-black p-4">

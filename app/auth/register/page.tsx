@@ -1,7 +1,6 @@
 "use client"
 
 import React, { SyntheticEvent, useState } from "react"
-import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { cpf as cpfValidator } from "cpf-cnpj-validator"
 import { z } from "zod"
@@ -9,11 +8,9 @@ import { capitalizeWords, formatCPF, formatEmail, formatLettersOnly, formatNumbe
 import Link from "next/link"
 import PasswordInputs from "@/app/components/PasswordInputs"
 
-export default function signUpPage(){
+export default function SignUpPage(){
     const router = useRouter();
     const [step, setStep] = useState(1);
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [equalPasswords, setEqualPasswords] = useState(false);
 
     const [formData, setFormData] = useState({ // estados para formularios
@@ -173,14 +170,16 @@ export default function signUpPage(){
             router.refresh()
             
 
-        }catch(err: any){
+        }catch(err: unknown){
           setLoading(false);
-          if(err.message === "Email exists"){
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.log(err);
+          if(errorMessage === "Email exists"){
             setError("Já existe um usuário cadastrado com esse e-mail.");
-          }else if(err.message === "CPF exists"){
+          }else if(errorMessage === "CPF exists"){
             setError("Já existe um usuário cadastrado com esse CPF/CNPJ.");
           }else{
-            console.log(err.message);
+            console.log(errorMessage);
             setError("Erro inesperado. Tente novamente. Caso persista, contate nosso suporte.")
           }
         }
@@ -199,14 +198,6 @@ export default function signUpPage(){
       setError("");
       setStep(2);
     }
-
-    const inputClassName = (isError: boolean) => `
-        w-full p-3 rounded-xl outline-none transition-all border-2
-        ${isError 
-            ? "border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)] focus:shadow-[0_0_20px_rgba(239,68,68,0.6)] text-red-900" 
-            : "input-custom w-full pr-10"
-        }
-    `;
 
     return (
       
@@ -260,7 +251,7 @@ export default function signUpPage(){
                             <input name="birthMonth" value = {formData.birthMonth} placeholder="12" 
                             onChange={handleChange} onBlur={handleBlur}  className="input-custom" required />
                           </div>
-                          <div className="flex flex-col flex-grow">
+                          <div className="flex flex-col grow">
                             <label className="mb-1 text-sm text-black ">Ano *</label>
                             <input name="birthYear" value = {formData.birthYear} placeholder="2000" 
                             onChange={handleChange} onBlur={handleBlur} className="input-custom" required />

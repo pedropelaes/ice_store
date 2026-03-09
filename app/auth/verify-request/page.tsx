@@ -1,9 +1,9 @@
 "use client"
 import Link from "next/link";
 import { useSearchParams } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
-export default function emailSendedScreen(){
+export default function EmailSendedScreen(){
     const searchParams = useSearchParams();
 
     const email = searchParams.get("email");
@@ -26,6 +26,7 @@ export default function emailSendedScreen(){
                 setStatus("error")
             }
         }catch (error) {
+            console.log(error);
             setStatus("error")
         }
     }
@@ -69,11 +70,11 @@ export default function emailSendedScreen(){
             </div>
 
             <div className="flex items-center justify-center w-full max-w-xl mb-2 mt-8">
-                <div className="flex-grow h-px bg-gray-400"></div> 
+                <div className="grow h-px bg-gray-400"></div> 
                 
                 <span className="px-3 text-gray-500 text-sm font-serif">E-mail verificado? Faça login!</span>
                 
-                <div className="flex-grow h-px bg-gray-400"></div>
+                <div className="grow h-px bg-gray-400"></div>
             </div>
 
             <div className="flex justify-center mt-8">
