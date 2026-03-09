@@ -28,7 +28,7 @@ export default function MethodsListWrapper({ initialMethods }: { initialMethods:
         setModalError(response.error || "Ocorreu um erro ao excluir o cartão.");
       }
     } catch (error) {
-      setModalError("Falha de comunicação com o servidor.");
+      setModalError(`Falha de comunicação com o servidor. ${error}`);
     } finally {
       setIsDeleting(false);
     }
@@ -86,7 +86,7 @@ export default function MethodsListWrapper({ initialMethods }: { initialMethods:
               <button
                 onClick={handleDeleteConfirm} 
                 disabled={isDeleting}
-                className="w-full sm:w-auto px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors flex items-center justify-center min-w-[120px] disabled:bg-red-400 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors flex items-center justify-center min-w-30 disabled:bg-red-400 disabled:cursor-not-allowed"
               >
                 {isDeleting ? (
                   <span className="flex items-center gap-2">

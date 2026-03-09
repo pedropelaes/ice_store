@@ -138,7 +138,7 @@ export default async function CatalogPage({
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
             <div className="flex flex-wrap gap-2 text-sm text-gray-500 mt-1">
-                {params.search && <span>para "{params.search}"</span>}
+                {params.search && <span>para &quot;{params.search}&quot;</span>}
                 {params.category && <span className="bg-gray-100 px-2 rounded-full text-xs flex items-center">Categ: {params.category}</span>}
                 {params.size && <span className="bg-gray-100 px-2 rounded-full text-xs flex items-center">Tam: {params.size}</span>}
             </div>

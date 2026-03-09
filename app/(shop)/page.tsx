@@ -2,9 +2,17 @@ import { ProductRow } from "@/app/components/store/ProductRow";
 import prisma from "@/app/lib/prisma";
 import Link from "next/link";
 import Image from "next/image";
+import { Category, Prisma } from "../generated/prisma";
+
+export type ProductWithRelations = Prisma.ProductGetPayload<{
+  include: {
+    items: true;
+    category: true;
+  }
+}>
 
 // Função auxiliar para converter os dados do Prisma para o Front-end
-export const serializeProduct = (product: any) => ({
+export const serializeProduct = (product: ProductWithRelations) => ({
   ...product,
   price: Number(product.price),
   discount_price: product.discount_price ? Number(product.discount_price) : null,
@@ -12,8 +20,8 @@ export const serializeProduct = (product: any) => ({
   length: product.length ? Number(product.length) : null,
   width: product.width ? Number(product.width) : null,
   height: product.height ? Number(product.height) : null,
-  created_at: product.created_at.toISOString(),
-  launched_at: product.launched_at ? product.launched_at.toISOString() : null,
+  created_at: product.created_at,//.toISOString(),
+  launched_at: product.launched_at, //? product.launched_at.toISOString() : null,
   // Se houver items, garante que sejam objetos simples também
   items: product.items || []
 });
@@ -66,7 +74,7 @@ export default async function Home() {
       {banner && (
           <section className="w-full mb-12 animate-fade-in-up">
             <Link href={banner.route} className="block group">
-              <div className="relative w-full aspect-[16/9] max-h-[60vh] rounded-2xl overflow-hidden shadow-md group-hover:shadow-xl transition-shadow">
+              <div className="relative w-full aspect-video max-h-[60vh] rounded-2xl overflow-hidden shadow-md group-hover:shadow-xl transition-shadow">
                 <Image
                   src={banner.image_url}
                   alt="Banner Promocional"
@@ -96,7 +104,7 @@ export default async function Home() {
         <section className="text-center">
           <h2 className="text-xl font-bold mb-6 text-gray-900">Navegue por Categoria</h2> 
           <div className="flex flex-wrap gap-4 justify-center">
-              {categories?.map((cat: any) => (
+              {categories?.map((cat: Category) => (
                 <Link 
                   key={cat.id} 
                   href={`/catalog?category=${cat.name}`}

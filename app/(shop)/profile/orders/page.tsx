@@ -78,7 +78,7 @@ export default async function UserOrdersPage({
                                 animationFillMode: 'forwards'
                             }}
                         >
-                            <OrderCard order={order as any}
+                            <OrderCard order={order}
                                 reviewedProductIds={reviewedProductIds}
                             />
                         </div>

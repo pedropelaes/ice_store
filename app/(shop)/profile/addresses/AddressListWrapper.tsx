@@ -5,8 +5,9 @@ import AddressCard from '@/app/components/store/user/AddressCard';
 import PasswordModal from '@/app/components/modals/PasswordModal';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { deleteAddress } from '@/app/actions/adress';
+import { Address } from '@/app/generated/prisma';
 
-export default function AddressListWrapper({ initialAddresses }: { initialAddresses: any[] }) {
+export default function AddressListWrapper({ initialAddresses }: { initialAddresses: Address[] }) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
    const [modalError, setModalError] = useState("");
    const [isDeleting, setIsDeleting] = useState(false);
@@ -29,7 +30,7 @@ export default function AddressListWrapper({ initialAddresses }: { initialAddres
         setModalError(response.error || "Ocorreu um erro ao excluir o endereço.");
       }
     } catch (error) {
-      setModalError("Falha de comunicação com o servidor.");
+      setModalError(`Falha de comunicação com o servidor. ${error}`);
     } finally {
       setIsDeleting(false);
     }

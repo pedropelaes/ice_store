@@ -101,7 +101,7 @@ export default async function CartPage() {
             </div>
 
             {/* Resumo do Pedido (Direita) */}
-            <div className="w-full lg:w-[400px] flex-shrink-0">
+            <div className="w-full lg:w-100 shrink-0">
               <OrderSummary subtotal={subtotal} isValidCart={isValidCart}/>
             </div>
 

@@ -1,7 +1,5 @@
 import { getAuthenticatedUser } from "@/app/lib/get-user";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { ProfileHeader } from "@/app/components/store/user/ProfileHeader";
 
 export default async function ProfileLayout({

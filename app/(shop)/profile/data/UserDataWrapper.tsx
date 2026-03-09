@@ -63,7 +63,7 @@ export default function UserDataWrapper({ initialData }: { initialData: UserData
         setErrorMsg(response.error || "Erro ao atualizar os dados.");
       }
     } catch (error) {
-      setErrorMsg("Falha de comunicação com o servidor.");
+      setErrorMsg(`Falha de comunicação com o servidor. ${error}`);
     } finally {
       setIsLoading(false);
     }
@@ -204,7 +204,7 @@ export default function UserDataWrapper({ initialData }: { initialData: UserData
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 font-medium transition-colors flex items-center justify-center min-w-[120px]"
+                  className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 font-medium transition-colors flex items-center justify-center min-w-30"
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar alterações"}
                 </button>
