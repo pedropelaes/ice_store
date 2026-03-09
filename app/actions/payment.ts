@@ -116,7 +116,7 @@ export async function processPixPayment({ amount, payer, orderId }: PixPaymentPa
     }
 }
 
-export async function processCardPayment({ token, installments, paymentMethodId, issuerId, payer, orderId, savedCardId, last4 }: CardPaymentParams) {
+export async function processCardPayment({ token, installments, paymentMethodId, payer, orderId, savedCardId, last4 }: CardPaymentParams) {
     try {
         const authUser = await getAuthenticatedUser();
         if(!authUser) return { success: false, error: "Usuário não autenticado ou não encontrado." }
@@ -195,16 +195,24 @@ export async function processCardPayment({ token, installments, paymentMethodId,
             statusDetail: response.status_detail,
         };
 
-    } catch (error: any) {
-        // A MÁGICA DO DEBUG ESTÁ AQUI
+    } catch (error: unknown) {
         console.error("\n=== 🔴 ERRO FATAL AO PROCESSAR CARTÃO ===");
-        console.error("Mensagem geral:", error.message);
-        console.error("Causa raiz (Detalhes da API):", JSON.stringify(error.cause || error, null, 2));
+        let errorMessage = "Erro desconhecido na operadora";
+        let errorDetails = error;
+
+        if (error instanceof Error) {
+            errorMessage = error.message;
+            errorDetails = ('cause' in error) ? error.cause : error;
+        } else if (error && typeof error === 'object' && 'message' in error) {
+            errorMessage = String(error.message);
+        }
+
+        console.error("Mensagem geral:", errorMessage);
+        console.error("Causa raiz (Detalhes da API):", JSON.stringify(errorDetails, null, 2));
         
-        // Retornamos a mensagem de erro do MP para o Front-end mostrar na tela vermelha!
         return { 
             success: false, 
-            error: `Erro na API do MP: ${error.message}. Olhe o terminal do backend.` 
+            error: `Erro na API do MP: ${errorMessage}. Olhe o terminal do backend.` 
         };
     }
 }
@@ -218,7 +226,7 @@ interface CheckoutItem {
 export async function createOrderAndReserveStock(data: {
     cartItems: CheckoutItem[],
     paymentMethod: 'PIX' | 'CREDIT_CARD',
-    payer: any, 
+    payer: PayerData, 
     addressData: DeliveryData
 }) {
     try {
@@ -288,7 +296,6 @@ export async function createOrderAndReserveStock(data: {
                 totalFinal -= backendSubtotal * 0.05; 
             }
 
-            // Removido o 'any' para garantir segurança de tipos
             const order = await tx.order.create({ 
                 data: {
                     user_id: user.id,
