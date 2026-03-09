@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, SyntheticEvent } from "react";
 import { ImageIcon, Save, Trash2, UploadCloud } from "lucide-react";
 import { uploadImage } from "@/app/lib/upload-image";
+import Image from "next/image";
 
 export default function UpdateBannerPage() {
     const router = useRouter();
@@ -84,9 +85,10 @@ export default function UpdateBannerPage() {
             setRoutePath("");
             
             router.push("/")
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err.message || "Erro inesperado ao enviar o banner.");
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            setError(errorMessage || "Erro inesperado ao enviar o banner.");
         } finally {
             setLoading(false);
         }
@@ -127,10 +129,12 @@ export default function UpdateBannerPage() {
                             >
                                 {imagePreview ? (
                                     <>
-                                        <img 
-                                            src={imagePreview} 
-                                            alt="Preview do Banner" 
-                                            className="w-full h-full object-cover" 
+                                        <Image
+                                            src={imagePreview}
+                                            alt="Preview do Banner"
+                                            fill
+                                            className="object-cover"
+                                            unoptimized
                                         />
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 text-white">
                                             <UploadCloud size={32} />

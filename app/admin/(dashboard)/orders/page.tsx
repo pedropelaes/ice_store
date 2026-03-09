@@ -6,9 +6,9 @@ import { AdminPageHeader } from "@/app/components/admin/AdminPageHeader";
 import { AdminToolbar } from "@/app/components/admin/AdminToolBar";
 import { DateFilter } from "@/app/components/admin/DateFilter";
 import { useQuery } from "@tanstack/react-query";
-import { OrderStatus } from "@/app/generated/prisma";
 import { useAdminTable } from "@/app/hooks/useAdminTableSort";
 import { useClickOutside } from "@/app/hooks/useClickOutside";
+import { Prisma } from "@/app/generated/prisma";
 
 const ORDER_STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = {
     PAID: { label: "Pago", bg: "#82FF95", text: "#00410A" },
@@ -43,7 +43,7 @@ export default function OrdersPage() {
     const [filterDate, setFilterDate] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
     
-    const statusDropdown = useClickOutside<HTMLDivElement>();
+    //const statusDropdown = useClickOutside<HTMLDivElement>();
 
     const { data: orders, isLoading: isLoadingOrders, isError: isErrorOrders } = useQuery({
         queryKey: ['orders', table.debouncedSearch, table.sortConfig, filterDate, filterStatus],
@@ -54,6 +54,7 @@ export default function OrdersPage() {
     const itemsPerPage = orders?.meta?.limit || 20;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
+    const { ref: dropdownRef, isOpen, setIsOpen } = useClickOutside<HTMLDivElement>();
     return (
         <div className="w-full">
             
@@ -71,10 +72,10 @@ export default function OrdersPage() {
                     
                     <DateFilter date={filterDate} setDate={(val) => { setFilterDate(val); table.setPage(1); }} />
 
-                    <div className="relative" ref={statusDropdown.ref}>
+                    <div className="relative" ref={dropdownRef}>
                         <button 
                             className={`flex items-center gap-2 bg-white px-3 py-2 rounded-lg text-sm font-medium text-black shadow-sm border hover:bg-gray-50 h-10 ${filterStatus ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
-                            onClick={() => statusDropdown.setIsOpen(!statusDropdown.isOpen)}
+                            onClick={() => setIsOpen(!isOpen)}
                         >
                             <CircleDashed size={16} />
                             <span>{filterStatus ? ORDER_STATUS_MAP[filterStatus]?.label : "Status"}</span>
@@ -85,13 +86,13 @@ export default function OrdersPage() {
                             )}
                         </button>
 
-                        {statusDropdown.isOpen && (
-                            <div className="absolute top-full mt-2 right-0 bg-white border border-gray-200 rounded-lg shadow-xl z-20 min-w-[150px] overflow-hidden text-black">
+                        {isOpen && (
+                            <div className="absolute top-full mt-2 right-0 bg-white border border-gray-200 rounded-lg shadow-xl z-20 min-w-37.5 overflow-hidden text-black">
                                 {Object.keys(ORDER_STATUS_MAP).map((key) => (
                                     <div 
                                         key={key}
                                         className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm flex items-center gap-2"
-                                        onClick={() => { setFilterStatus(key); statusDropdown.setIsOpen(false); table.setPage(1) }}
+                                        onClick={() => { setFilterStatus(key); setIsOpen(false); table.setPage(1) }}
                                     >
                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ORDER_STATUS_MAP[key].bg}}></div>
                                         {ORDER_STATUS_MAP[key].label}
@@ -158,7 +159,9 @@ export default function OrdersPage() {
                                 </tr>
                             </thead>
                             <tbody className="text-black text-sm"> 
-                                {orders?.data?.map((order: any) => {
+                                {orders?.data?.map((order: Prisma.OrderGetPayload<{include: {
+                                    client: true;
+                                }}>) => {
                                     const statusConfig = ORDER_STATUS_MAP[order.status] || { 
                                         label: order.status, 
                                         bg: "#E5E7EB", 

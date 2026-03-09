@@ -6,6 +6,7 @@ import { uploadImage } from "@/app/lib/upload-image";
 import { ArrowRight, ImageIcon, Plus, Save, Trash2, UploadCloud, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { SyntheticEvent, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 
 export interface CategoryOption {
     id: number;
@@ -303,9 +304,11 @@ export default function AddProductPage() {
             alert(`${drafts.length} produto(s) criado(s) com sucesso!`);
             router.refresh();
             router.push("/admin/products");
-        }catch(err: any){
+        }catch(err: unknown){
             setLoading(false);
-            switch(err.message){
+
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            switch(errorMessage){
                 case "Invalid User ID":
                     setmodalError("Erro ao obter ID do admin, tente novamente");
                     break;
@@ -319,7 +322,7 @@ export default function AddProductPage() {
                     setmodalError("Digite uma senha");
                     break;
                 default:
-                    setmodalError(err.message || "Erro inesperado. Tente novamente");
+                    setmodalError(errorMessage || "Erro inesperado. Tente novamente");
                     break;
             }
         }
@@ -362,10 +365,12 @@ export default function AddProductPage() {
                     >
                         {imagePreview ? (
                         <>
-                            <img 
+                            <Image 
                                 src={imagePreview} 
                                 alt="Preview" 
-                                className="w-full h-full object-cover" 
+                                fill
+                                className="object-cover" 
+                                unoptimized
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 text-white">
                                 <UploadCloud size={32} />
@@ -463,7 +468,7 @@ export default function AddProductPage() {
                             <input name="quantity" value={variantInput.quantity} onChange={handleVariantChange} className="input-custom w-full" placeholder="Ex: 10" />
                         </div>
                         <button type="button" disabled={isButtonDisabled}
-                        onClick={handleAddVariant} className="bg-gray-800 text-white px-4 h-[42px] rounded-md hover:bg-black transition-colors text-sm font-medium disabled:bg-black/50">
+                        onClick={handleAddVariant} className="bg-gray-800 text-white px-4 h-10.5 rounded-md hover:bg-black transition-colors text-sm font-medium disabled:bg-black/50">
                             Adicionar
                         </button>
                     </div>
@@ -486,7 +491,7 @@ export default function AddProductPage() {
                     <div className="flex flex-col relative">
                     <label className="mb-1 font-medium text-black">Categoria *</label>
                     
-                    <div className="input-custom w-full min-h-[42px] flex flex-wrap gap-2 items-center p-2 bg-white">
+                    <div className="input-custom w-full min-h-10.5 flex flex-wrap gap-2 items-center p-2 bg-white">
 
                         {selectedCategories.map((cat) => (
                             <span key={cat} className="bg-gray-200 text-black px-2 py-1 rounded-md text-sm flex items-center gap-1">
@@ -499,7 +504,7 @@ export default function AddProductPage() {
 
                         <input 
                             type="text" 
-                            className="outline-none flex-1 bg-transparent min-w-[120px]" 
+                            className="outline-none flex-1 bg-transparent min-w-30" 
                             placeholder={selectedCategories.length === 0 ? "Selecione ou digite..." : ""}
                             value={categoryInput}
                             onChange={(e) => {
@@ -530,7 +535,7 @@ export default function AddProductPage() {
                                     onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => handleAddCategory(categoryInput)}
                                 >
-                                    Criar "{categoryInput}"
+                                    Criar &quot;{categoryInput}&quot;
                                 </div>
                             ) :
                                 <div className="px-4 py-2 text-gray-400 text-sm">
@@ -545,13 +550,13 @@ export default function AddProductPage() {
                 </div>
             </div>
         </div>
-            <div className="flex flex justify-center mt-8 mb-2">
+            <div className="flex justify-center mt-8 mb-2">
                 <button className="btn-primary" onClick={handleAddToList}>
                     Adicionar a lista
                     <Plus></Plus>
                 </button>
             </div>
-            <div className="flex flex justify-center mb-2">
+            <div className="flex justify-center mb-2">
                 {error && <p className="text-red-500 text-sm">{error}</p>}
             </div>
         </div>
@@ -567,7 +572,15 @@ export default function AddProductPage() {
                 ) : (
                     drafts.map((draft) => (
                         <div key={draft.id} className="flex gap-4 p-3 border rounded-lg items-center bg-gray-50">
-                            <img src={draft.imagePreview} alt="" className="w-16 h-16 object-cover rounded-md" />
+                            <div className="relative w-16 h-16 shrink-0">
+                                <Image 
+                                    src={draft.imagePreview} 
+                                    alt={draft.name} 
+                                    fill
+                                    className="object-cover rounded-md" 
+                                    unoptimized
+                                />
+                            </div>
                             <div className="flex-1">
                                 <p className="font-bold text-black text-sm">{draft.name}</p>
                                 <p className="text-xs text-gray-600">{draft.price} • Tam: {draft.variants.length} (Qtd: {draft.variants[0].quantity})</p>

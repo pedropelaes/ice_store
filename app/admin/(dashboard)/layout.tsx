@@ -1,5 +1,4 @@
 import { getServerSession } from "next-auth";
-import Sidebar from "../../components/admin/sidebar";
 import { authOptions } from "../../lib/auth";
 import { AdminClientLayout } from "@/app/components/admin/AdminClientLayout";
 
