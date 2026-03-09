@@ -46,7 +46,7 @@ export default function OrdersPage() {
     //const statusDropdown = useClickOutside<HTMLDivElement>();
 
     const { data: orders, isLoading: isLoadingOrders, isError: isErrorOrders } = useQuery({
-        queryKey: ['orders', table.debouncedSearch, table.sortConfig, filterDate, filterStatus],
+        queryKey: ['orders', table.debouncedSearch, table.sortConfig, filterDate, filterStatus, table.page],
         queryFn: () => getOrders(table.search, table.sortConfig.field, table.sortConfig.order, filterDate, filterStatus, table.page),
     });
 

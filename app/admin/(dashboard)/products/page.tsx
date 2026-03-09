@@ -126,7 +126,7 @@ export default function ProductsPage() {
 
     // products query
     const { data: products, isLoading: isLoadingProducts, isError: isErrorProducts } = useQuery({
-        queryKey: ['products', table.debouncedSearch, table.sortConfig, filterCategory, filterStatus, filterDate],
+        queryKey: ['products', table.debouncedSearch, table.sortConfig, filterCategory, filterStatus, filterDate, table.page],
         queryFn: () => getProducts(table.search, table.sortConfig.field, table.sortConfig.order, filterCategory, filterStatus, filterDate, table.page),
     });
 
