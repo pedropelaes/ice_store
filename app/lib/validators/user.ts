@@ -37,3 +37,12 @@ export const signupSchema = z.object({
 })
 
 export type SignupInput = z.infer<typeof signupSchema>
+
+
+export const updateProfileSchema = signupSchema.pick({
+  name: true,
+  lastName: true,
+  birthDate: true,
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

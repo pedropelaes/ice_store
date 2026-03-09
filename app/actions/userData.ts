@@ -3,6 +3,7 @@
 import prisma from "@/app/lib/prisma"; 
 import { getAuthenticatedUser } from "@/app/lib/get-user";
 import { revalidatePath } from "next/cache";
+import { updateProfileSchema } from "../lib/validators/user";
 
 interface UpdateDataParams {
   name: string;
@@ -15,24 +16,20 @@ export async function updateUserData(data: UpdateDataParams) {
     const authUser = await getAuthenticatedUser();
     if (!authUser) return { success: false, error: "Usuário não autenticado." };
 
-    if (!data.name || data.name.trim().length < 2) {
-      return { success: false, error: "Nome muito curto ou inválido." };
-    }
-    if (!data.lastName || data.lastName.trim().length < 2) {
-      return { success: false, error: "Sobrenome muito curto ou inválido." };
-    }
+    const parsed = updateProfileSchema.safeParse(data);
 
-    const parsedDate = new Date(data.birthDate);
-    if (isNaN(parsedDate.getTime())) {
-      return { success: false, error: "Data de nascimento inválida." };
+    if (!parsed.success) {
+      // Pega a primeira mensagem de erro do Zod para mostrar no Toast do front-end
+      const firstError = parsed.error.issues[0]?.message || "Dados inválidos.";
+      return { success: false, error: firstError };
     }
 
     await prisma.user.update({
       where: { email: authUser.email },
       data: {
-        name: data.name.trim(),
-        lastName: data.lastName.trim(),
-        birthDate: parsedDate,
+        name: parsed.data.name,
+        lastName: parsed.data.lastName,
+        birthDate: parsed.data.birthDate,
       }
     });
 
