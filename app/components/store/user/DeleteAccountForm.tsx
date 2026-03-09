@@ -5,12 +5,12 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { deleteUserAccount } from "@/app/actions/deleteUser";
 import { signOut } from "next-auth/react";
 
-export function DeleteAccountForm({ userId }: { userId: number }) {
+export function DeleteAccountForm() {
     const [password, setPassword] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleDelete = async (e: React.FormEvent) => {
+    const handleDelete = async (e: React.SubmitEvent) => {
         e.preventDefault();
         setErrorMsg("");
 
@@ -22,7 +22,7 @@ export function DeleteAccountForm({ userId }: { userId: number }) {
         setIsLoading(true);
 
         try {
-            const response = await deleteUserAccount(userId, password);
+            const response = await deleteUserAccount(password);
 
             if (!response.success) {
                 setErrorMsg(response.error || "Senha incorreta ou erro ao excluir.");

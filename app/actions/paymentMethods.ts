@@ -56,7 +56,7 @@ export async function deletePaymentMethod(id: number) {
 
         return { success: true };
     }catch(error){
-        console.error("Erro ao deletar endereço:", error);
-        throw new Error("Erro ao deletar endereço.")
+        console.error("Erro ao deletar método de pagamento:", error);
+        return { success: false, error: "Ocorreu um erro interno ao tentar deletar o cartão." };
     }
 }

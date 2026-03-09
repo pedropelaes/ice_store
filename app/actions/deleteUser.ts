@@ -4,21 +4,22 @@ import prisma from "../lib/prisma";
 import { getAuthenticatedUser } from "../lib/get-user";
 
 
-export async function deleteUserAccount(userId: number, password: string) {
+export async function deleteUserAccount(password: string) {
   try {
     // 1. Trava de segurança: usuário logado
     const authUser = await getAuthenticatedUser();
     if (!authUser) return { success: false, error: "Não autorizado." };
-
+    
     // 2. Busca o usuário no banco para checar a senha atual
     const user = await prisma.user.findUnique({
-        where: { id: userId }
+        where: { email: authUser.email }
     });
 
     if (!user || !user.passwordHash) {
         return { success: false, error: "Usuário não encontrado." };
     }
 
+    const userId = user.id;
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
