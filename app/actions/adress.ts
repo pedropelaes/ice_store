@@ -51,6 +51,6 @@ export async function deleteAddress(id: number) {
         return { success: true };
     }catch(error){
         console.error("Erro ao deletar endereço:", error);
-        throw new Error("Erro ao deletar endereço.")
+        return { success: false, error: "Ocorreu um erro interno ao tentar deletar o endereço." };
     }
 }

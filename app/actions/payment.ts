@@ -141,8 +141,7 @@ export async function processCardPayment({ token, installments, paymentMethodId,
 
         // Correção de Tipo: Garantindo que o Decimal do Prisma vire um número válido
         const amountFinal = Number(order.total_final.toString());
-        const finalIssuerId = issuerId ? Number(issuerId) : undefined;
-        // Montando o corpo da requisição isolado para podermos "printar"
+        //const finalIssuerId = issuerId ? Number(issuerId) : undefined;
         const requestBody = {
             transaction_amount: Number(amountFinal.toFixed(2)),
             token: token,

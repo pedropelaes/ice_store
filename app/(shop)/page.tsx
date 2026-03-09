@@ -65,15 +65,14 @@ export default async function Home() {
 
       {banner && (
           <section className="w-full mb-12 animate-fade-in-up">
-            
             <Link href={banner.route} className="block group">
-              <div className="relative w-full aspect-[16/7] md:aspect-[21/6] rounded-2xl overflow-hidden shadow-md group-hover:shadow-xl transition-shadow">
+              <div className="relative w-full aspect-[16/9] max-h-[60vh] rounded-2xl overflow-hidden shadow-md group-hover:shadow-xl transition-shadow">
                 <Image
                   src={banner.image_url}
                   alt="Banner Promocional"
                   fill
-                  priority 
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  priority
+                  className="object-contain lg:object-cover transition-transform duration-500 group-hover:scale-105"
                   sizes="(max-width: 1280px) 100vw, 1280px"
                 />
               </div>

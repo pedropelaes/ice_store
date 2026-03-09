@@ -3,13 +3,14 @@
 import prisma from "@/app/lib/prisma";
 import { Size } from "@/app/generated/prisma";
 import { revalidatePath } from "next/cache";
-import { getServerSession } from "next-auth"; 
-import { authOptions } from "../lib/auth"; 
-import { success } from "zod";
 import { getAuthenticatedUser } from "../lib/get-user";
 
 export async function addToCart(productId: number, size: Size, quantity: number) {
   try {
+    if (quantity <= 0) {
+      return { success: false, error: "Quantidade inválida." };
+    }
+
     const user = await getAuthenticatedUser();
     if(!user) return { success: false, error: "Usuário não autenticado ou não encontrado." }
 
@@ -77,10 +78,30 @@ export async function addToCart(productId: number, size: Size, quantity: number)
 
 export async function updateCartItemQuantity(itemId: number, newQuantity: number) {
   try {
-    await prisma.cartItem.update({
-      where: { id: itemId },
+    const user = await getAuthenticatedUser();
+    if (!user) return { success: false, error: "Não autorizado." };
+
+    if (newQuantity <= 0) {
+      return removeCartItem(itemId);
+    }
+
+    const cart = await prisma.cart.findUnique({
+      where: { user_id: user.id }
+    });
+
+    if (!cart) return { success: false, error: "Carrinho não encontrado." };
+
+    const res = await prisma.cartItem.updateMany({
+      where: { 
+        id: itemId,
+        cart_id: cart.id 
+      },
       data: { quantity: newQuantity }
     });
+
+    if (res.count === 0) {
+       return { success: false, error: "Item não encontrado no seu carrinho." };
+    }
 
     revalidatePath('/cart');
     return { success: true };
@@ -92,9 +113,26 @@ export async function updateCartItemQuantity(itemId: number, newQuantity: number
 
 export async function removeCartItem(itemId: number) {
   try {
-    await prisma.cartItem.delete({
-      where: { id: itemId }
+
+    const user = await getAuthenticatedUser();
+    if (!user) return { success: false, error: "Não autorizado." };
+
+    const cart = await prisma.cart.findUnique({
+      where: { user_id: user.id }
     });
+
+    if (!cart) return { success: false, error: "Carrinho não encontrado." };
+    
+    const res = await prisma.cartItem.deleteMany({
+      where: { 
+        id: itemId,
+        cart_id: cart.id 
+      }
+    });
+
+    if (res.count === 0) {
+      return { success: false, error: "Item não encontrado no seu carrinho." };
+    }
 
     revalidatePath('/cart');
     return { success: true };
@@ -109,7 +147,7 @@ export async function cleanCart(){
     const user = await getAuthenticatedUser();
     if(!user) return { success: false, error: "Usuário não autenticado ou não encontrado." }
 
-    let cart = await prisma.cart.findUnique({
+    const cart = await prisma.cart.findUnique({
       where: { user_id: user.id }
     });
     if(!cart) return { success: true }
