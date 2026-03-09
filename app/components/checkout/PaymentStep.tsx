@@ -14,17 +14,6 @@ interface SavedCard {
   last4: string;
 }
 
-interface InstallmentOption {
-  installments: number;
-  recommended_message: string;
-}
-
-interface MercadoPagoWindow extends Window {
-  MercadoPago: new (publicKey: string | undefined) => {
-    getInstallments: (params: { amount: string; bin: string }) => Promise<Array<{ payer_costs: InstallmentOption[] }>>;
-  };
-}
-
 export function PaymentStep() {
   const { 
     paymentMethod, setPaymentMethod, 
@@ -85,14 +74,12 @@ export function PaymentStep() {
     setCardData(prev => ({ ...prev, [field]: value }));
   }
 
-  const fetchInstallments = async (bin: string) => {
-    const mpWindow = window as unknown as MercadoPagoWindow;
-    
-    if (typeof mpWindow.MercadoPago === 'undefined') return;
+  const fetchInstallments = async (bin: string) => {    
+    if (typeof window.MercadoPago === 'undefined') return;
     
     setIsLoadingInstallments(true);
     try {
-      const mp = new mpWindow.MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+      const mp = new window.MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!);
       
       const response = await mp.getInstallments({
         amount: total.toString(),

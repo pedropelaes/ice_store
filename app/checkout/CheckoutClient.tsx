@@ -16,34 +16,6 @@ import { cleanCart } from "../actions/cart";
 import { saveUserAddress, saveUserCard } from "../actions/checkout";
 import { Size } from "../generated/prisma";
 
-interface MPCardTokenParams {
-    cardNumber: string;
-    cardholderName: string;
-    cardExpirationMonth: string;
-    cardExpirationYear: string;
-    securityCode: string;
-    identificationType: string;
-    identificationNumber: string;
-}
-
-interface MPInstallment {
-    payment_method_id: string;
-    issuer: { id: string };
-}
-
-interface MercadoPagoInstance {
-    createCardToken(params: MPCardTokenParams): Promise<{ id: string } | undefined>;
-    getInstallments(params: { amount: string; bin: string }): Promise<MPInstallment[] | undefined>;
-}
-
-declare global {
-    interface Window {
-        MercadoPago?: {
-            new (publicKey: string): MercadoPagoInstance;
-        };
-    }
-}
-
 function CheckoutStepper() {
   const { currentStep, setCurrentStep } = useCheckout();
   

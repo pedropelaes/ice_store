@@ -1,6 +1,7 @@
 import { AlertTriangle, ArrowRight, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { LowStockProduct } from "@/app/services/dashboard-service";
+import Image from "next/image";
 
 interface LowStockWidgetProps {
     data: LowStockProduct[];
@@ -11,7 +12,7 @@ export function LowStockWidget({ data }: LowStockWidgetProps) {
     const hasLowStock = data && data.length > 0;
 
     return (
-        <div className="bg-[#383838] rounded-lg shadow-md flex flex-col h-full min-h-[300px]">
+        <div className="bg-[#383838] rounded-lg shadow-md flex flex-col h-full min-h-75">
             {/* Header do Card */}
             <div className="p-4 border-b border-[#525252] flex justify-between items-center">
                 <div className="flex items-center gap-2">
@@ -46,14 +47,19 @@ export function LowStockWidget({ data }: LowStockWidgetProps) {
                         {data.map((product) => (
                             <div key={product.id} className="flex items-center justify-between p-3 bg-[#434343] rounded border border-[#525252] hover:bg-[#4a4a4a] transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-[#2d2d2d] rounded overflow-hidden flex-shrink-0">
+                                    <div className="relative w-10 h-10 bg-[#2d2d2d] rounded overflow-hidden shrink-0">
                                         {product.image_url && (
-                                            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover opacity-80" />
+                                            <Image
+                                                src={product.image_url}
+                                                alt={product.name}
+                                                fill
+                                                className="object-cover opacity-80"
+                                            />
                                         )}
                                     </div>
                                     
                                     <div className="flex flex-col">
-                                        <span className="text-sm font-medium text-gray-200 truncate max-w-[120px] sm:max-w-[150px]" title={product.name}>
+                                        <span className="text-sm font-medium text-gray-200 truncate max-w-30 sm:max-w-37.5" title={product.name}>
                                             {product.name}
                                         </span>
                                         <span className="text-[10px] text-gray-400">
@@ -62,12 +68,12 @@ export function LowStockWidget({ data }: LowStockWidgetProps) {
                                     </div>
                                 </div>
 
-                                <div className="flex gap-1 flex-wrap justify-end max-w-[140px]">
+                                <div className="flex gap-1 flex-wrap justify-end max-w-35">
                                     {product.items.map((item, idx) => (
                                         <div 
                                             key={idx}
                                             className={`
-                                                flex flex-col items-center justify-center px-1.5 py-0.5 rounded border text-[10px] font-bold min-w-[24px]
+                                                flex flex-col items-center justify-center px-1.5 py-0.5 rounded border text-[10px] font-bold min-w-6
                                                 ${item.quantity === 0 
                                                     ? 'bg-red-900/30 text-red-400 border-red-900' // Zerado
                                                     : 'bg-yellow-900/30 text-yellow-400 border-yellow-900' // Baixo

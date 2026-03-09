@@ -10,7 +10,7 @@ interface SalesChartProps {
 
 export function SalesChart({ data }: SalesChartProps) {
     return (
-    <div className="w-full h-[400px] bg-white rounded-lg p-4 shadow-sm">
+    <div className="w-full h-100 bg-white rounded-lg p-4 shadow-sm">
       <h2 className="text-lg font-medium mb-4 text-gray-700">Vendas / dia</h2>
       
       <ResponsiveContainer width="100%" height="100%"> {/*Se adapta a div pai */}

@@ -1,6 +1,7 @@
 "use client"
 
 import { Copy, CheckCircle2 } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
 interface PixQRCodeDisplayProps {
@@ -21,12 +22,13 @@ export function PixQRCodeDisplay({ qrCodeBase64, qrCodeText = "xxxxxxxxxxxxxxxxx
 
   return (
     <div className="flex flex-col md:flex-row gap-6 mb-8 items-center md:items-start text-black">
-      <div className="w-40 h-40 bg-gray-400 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+      <div className="relative w-40 h-40 bg-gray-400 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
         {qrCodeBase64 ? (
-          <img 
-            src={`data:image/jpeg;base64,${qrCodeBase64}`} 
-            alt="QR Code PIX" 
-            className="w-full h-full object-cover" 
+          <Image
+            src={`data:image/jpeg;base64,${qrCodeBase64}`}
+            alt="QR Code PIX"
+            fill
+            className="object-cover"
           />
         ) : (
           <div className="grid grid-cols-2 gap-1 p-4 w-full h-full">
@@ -42,7 +44,7 @@ export function PixQRCodeDisplay({ qrCodeBase64, qrCodeText = "xxxxxxxxxxxxxxxxx
         <h3 className="font-bold text-lg mb-2">Escaneie o código ou<br />copie a chave pix:</h3>
         
         <div className="flex items-center gap-2 mt-2">
-          <p className="text-sm font-medium truncate max-w-[200px] md:max-w-[300px]">
+          <p className="text-sm font-medium truncate max-w-50 md:max-w-75">
             {qrCodeText}
           </p>
           <button 

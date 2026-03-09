@@ -12,7 +12,7 @@ export function OrderStatusChart({ data }: OrderStatusChartProps) {
   const totalPedidos = data.reduce((acc, item) => acc + item.value, 0);
 
   return (
-    <div className="w-full h-[400px] bg-white rounded-lg p-4 shadow-sm flex flex-col">
+    <div className="w-full h-100 bg-white rounded-lg p-4 shadow-sm flex flex-col">
       
       <h2 className="text-lg font-medium mb-4 text-gray-700 text-center shrink-0">
         Status dos pedidos:
