@@ -1,12 +1,9 @@
-import { CheckoutProvider, useCheckout } from "@/app/context/CheckoutContext";
-import { Lock } from "lucide-react";
-import { getServerSession } from "next-auth";
-import Link from "next/link";
 import { authOptions } from "../lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "../lib/prisma";
 import { getCartData } from "../(shop)/cart/page";
 import CheckoutClient from "./CheckoutClient";
+import { getServerSession } from "next-auth";
 
 
 export default async function CheckoutPage() {

@@ -1,7 +1,7 @@
 "use client"
 
 import { CartItemType, CheckoutProvider, useCheckout } from "@/app/context/CheckoutContext";
-import { Lock, Truck, CreditCard, ShoppingCart, MapPin, Loader2 } from "lucide-react";
+import { Lock, Truck, CreditCard, ShoppingCart, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PaymentStep } from "../components/checkout/PaymentStep";
 import { ConfirmationStep } from "../components/checkout/ConfirmationStep";
@@ -14,6 +14,35 @@ import { changeOrderStatus, createOrderAndReserveStock, processCardPayment, veri
 import Script from "next/script";
 import { cleanCart } from "../actions/cart";
 import { saveUserAddress, saveUserCard } from "../actions/checkout";
+import { Size } from "../generated/prisma";
+
+interface MPCardTokenParams {
+    cardNumber: string;
+    cardholderName: string;
+    cardExpirationMonth: string;
+    cardExpirationYear: string;
+    securityCode: string;
+    identificationType: string;
+    identificationNumber: string;
+}
+
+interface MPInstallment {
+    payment_method_id: string;
+    issuer: { id: string };
+}
+
+interface MercadoPagoInstance {
+    createCardToken(params: MPCardTokenParams): Promise<{ id: string } | undefined>;
+    getInstallments(params: { amount: string; bin: string }): Promise<MPInstallment[] | undefined>;
+}
+
+declare global {
+    interface Window {
+        MercadoPago?: {
+            new (publicKey: string): MercadoPagoInstance;
+        };
+    }
+}
 
 function CheckoutStepper() {
   const { currentStep, setCurrentStep } = useCheckout();
@@ -28,7 +57,7 @@ function CheckoutStepper() {
     <div className="w-full max-w-2xl mx-auto mt-10 mb-12">
       <div className="relative flex items-start justify-between">
 
-        <div className="absolute top-8 left-[16%] right-[16%] h-[2px] bg-[#E5E5E5] z-0">
+        <div className="absolute top-8 left-[16%] right-[16%] h-0.5 bg-[#E5E5E5] z-0">
             <div 
                 className="h-full bg-[#333333] transition-all duration-500 ease-in-out" 
                 style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' }}
@@ -58,7 +87,7 @@ function CheckoutStepper() {
               </div>
 
               <span 
-                className={`text-sm text-center mt-3 max-w-[120px] 
+                className={`text-sm text-center mt-3 max-w-30 
                   ${isActive || isPast ? "text-black font-bold" : "text-gray-500 font-medium"}
                 `}
               >
@@ -96,12 +125,11 @@ function CheckoutSummary() {
       billingData, cardData,
       savedCardId, 
       subtotal,
-      total,
       pixDiscount,
       finalTotal,
       cartItems,
       pixData, setPixData,
-      orderedAt, setOrderedAt,
+      setOrderedAt,
       savePaymentMethod, saveAddress
     } = useCheckout();
     const [receiptToken, setReceiptToken] = useState("");
@@ -154,7 +182,7 @@ function CheckoutSummary() {
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [currentStep, paymentMethod, pixData, orderId]);
+    }, [currentStep, paymentMethod, pixData, orderId, receiptToken]);
 
     return (
         <div className="bg-[#999999] text-white p-6 rounded-xl sticky top-8">
@@ -205,14 +233,15 @@ function CheckoutSummary() {
                         }
                         const formattedItems = cartItems.map((item) => ({
                             productId: Number(item.product.id),
-                            size: item.size as any, 
+                            size: item.size as Size, 
                             quantity: item.quantity
                         }));
 
                         const payerData = {
                             firstName: deliveryData.recipientName.split(" ")[0] || "Nome",
                             lastName: deliveryData.recipientName.split(" ").slice(1).join(" ") || "Sobrenome",
-                            cpf: deliveryData.cpf
+                            cpf: deliveryData.cpf,
+                            email: undefined
                         };
 
                         if (currentStep === 2) {
@@ -266,13 +295,13 @@ function CheckoutSummary() {
                                     });
                                 } 
                                 else {
-                                    if (typeof (window as any).MercadoPago === 'undefined') {
+                                    if (typeof window.MercadoPago === 'undefined') {
                                         setErrorMsg("Conectando com a operadora. Por favor, aguarde e tente novamente.");
                                         setIsLoading(false);
                                         return; 
                                     }
 
-                                    const mp = new (window as any).MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+                                    const mp = new window.MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!);
                                     const [month, year] = cardData.expiry.split('/');
                                     
                                     const tokenResponse = await mp.createCardToken({
@@ -454,7 +483,7 @@ export default function CheckoutClient({ initialCartItems }: CheckoutClientProps
               <StepRenderer />
             </div>
 
-            <div className="w-full lg:w-[400px]">
+            <div className="w-full lg:w-100">
               <CheckoutSummary />
             </div>
           </div>

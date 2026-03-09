@@ -45,7 +45,7 @@ function getPaymentInstance() {
 }
 
 interface PayerData {
-    email: string;
+    email: string | undefined;
     firstName: string;
     lastName: string;
     cpf: string;
