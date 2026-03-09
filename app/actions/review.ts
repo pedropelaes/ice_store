@@ -2,7 +2,6 @@
 import { revalidatePath } from "next/cache";
 import { getAuthenticatedUser } from "../lib/get-user";
 import prisma from "@/app/lib/prisma"; 
-import { success } from "zod";
 
 export interface Review {
         rating: number;
@@ -108,7 +107,7 @@ export async function deleteReview(productId: number) {
         }
         
         revalidatePath("/profile/orders")
-        revalidatePath(`/product/`)
+        revalidatePath(`/product/${productId}`)
         
         return { success: true, message:"Avaliação apagada." }
     }catch(error){

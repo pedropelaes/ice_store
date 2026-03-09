@@ -3,6 +3,19 @@
 import prisma from "@/app/lib/prisma";
 import { getAuthenticatedUser } from "../lib/get-user";
 
+interface MelhorEnvioCompany {
+  name: string;
+}
+
+interface MelhorEnvioOption {
+  id: number;
+  name: string;         // Nome do serviço (ex: PAC, SEDEX)
+  price: string;        // A API costuma retornar o preço como string (ex: "15.90")
+  delivery_time: number;
+  company: MelhorEnvioCompany;
+  error?: string;       // Se a transportadora não atender o CEP, a API envia esse campo
+}
+
 export async function calculateShipping(destinationCep: string) {
   try {
     const cleanCep = destinationCep.replace(/\D/g, '');
@@ -30,6 +43,7 @@ export async function calculateShipping(destinationCep: string) {
     }
 
     const productsPayload = cart.cartItems.map(item => {
+      // ADMIN é impedido de ativar produtos sem dimensões
       // Fallback: Se o admin esquecer de cadastrar as dimensões, 
       // usamos um tamanho padrão mínimo aceito pelos Correios (16x11x2 cm, 300g)
       const weight = item.product.weight ? Number(item.product.weight) : 0.3;
@@ -68,7 +82,7 @@ export async function calculateShipping(destinationCep: string) {
       })
     });
 
-    const data = await response.json();
+    const data = (await response.json()) as MelhorEnvioOption[];
 
     if (!response.ok) {
       console.error("Erro Melhor Envio:", data);
@@ -76,16 +90,16 @@ export async function calculateShipping(destinationCep: string) {
     }
 
     // 4. O Melhor Envio retorna um array com várias transportadoras (Correios PAC, Sedex, Jadlog, etc).
-    const validOptions = data.filter((option: any) => !option.error);
+    const validOptions = data.filter((option) => !option.error);
     
     if (validOptions.length === 0) {
         return { success: false, error: "Nenhuma transportadora atende este CEP." };
     }
 
-    const sortedOptions = validOptions.sort((a: any, b: any) => Number(a.price) - Number(b.price));
+    const sortedOptions = validOptions.sort((a, b) => Number(a.price) - Number(b.price));
     const cheapestOption = sortedOptions[0];
 
-    const allOptions = sortedOptions.map((opt: any) => ({
+    const allOptions = sortedOptions.map((opt) => ({
         id: opt.id,
         company: opt.company.name, 
         method: opt.name,          
