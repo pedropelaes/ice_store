@@ -14,6 +14,7 @@ O projeto utiliza uma stack robusta e 100% tipada (End-to-End Type Safety), gara
 * **Linguagem:** [TypeScript](https://www.typescriptlang.org/) - Tipagem estrita desde o banco de dados até a interface.
 * **Banco de Dados & ORM:** [PostgreSQL] + [Prisma ORM](https://www.prisma.io/) - Relacionamentos complexos e queries transacionais.
 * **Gerenciamento de Estado:** [TanStack Query](https://tanstack.com/query) - Cache inteligente, mutações assíncronas e sincronização de dados do servidor.
+* **Background Jobs & Filas:** [Upstash (QStash/Redis)](https://upstash.com/) - Agendamento de filas de mensagens (cronjobs) para cancelamento assíncrono de pedidos e liberação de estoque.
 * **Armazenamento de Mídia:** [Cloudinary](https://cloudinary.com/) - Upload, otimização e entrega de imagens em nuvem (CDN).
 * **Estilização:** [Tailwind CSS](https://tailwindcss.com/) - UI responsiva, escalável e design system consistente.
 * **Autenticação:** [NextAuth.js](https://next-auth.js.org/) - Gestão de sessões seguras e controle de acesso baseado em roles (RBAC).
@@ -43,6 +44,7 @@ O projeto utiliza uma stack robusta e 100% tipada (End-to-End Type Safety), gara
 - **Checkout Otimizado (Frictionless):** - Fluxo em 3 etapas com validação de formulários em tempo real.
   - Funcionalidade "One-Click Buy" utilizando dados de cobrança e tokens de cartões previamente salvos de forma segura.
   - **Reserva Transacional de Estoque:** Bloqueio de itens no banco de dados durante a finalização da compra para evitar *overselling* (venda de itens esgotados).
+  - **Reserva e Expiração de Estoque:** Bloqueio de itens no momento da compra com cronômetro de 15 minutos. Caso o pagamento (PIX/Cartão) não seja confirmado, um *background job* via Upstash cancela o pedido e devolve os itens ao estoque automaticamente, prevenindo travamento de inventário.
 - **Self-Service do Cliente:** Painel privado para acompanhamento de pedidos, gestão de dados sensíveis e sistema integrado de avaliações e reviews de produtos.
 - **Segurança de Identidade:** Fluxos completos de recuperação de senha e verificação de e-mail utilizando tokens criptografados.
 
