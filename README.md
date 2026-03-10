@@ -56,6 +56,7 @@ O projeto utiliza uma stack robusta e 100% tipada (End-to-End Type Safety), gara
 2. **Type Safety Estrito e Global:** Extensão de escopos globais (ex: tipagem de SDKs injetados na `Window`) e aproveitamento de tipos inferidos do banco de dados (`Prisma Payloads`) para garantir que o Front-end reflita perfeitamente o Back-end.
 3. **Otimização de Ciclo de Vida (React 18):** Controle rigoroso de efeitos colaterais e mutações de estado, utilizando `useRef` e `useCallback` para evitar renderizações em cascata (*cascading renders*) e condições de corrida (*race conditions*) em requisições de rede.
 4. **Resiliência de Banco de Dados:** Uso de transações (ACID) em operações críticas, como o processamento de pagamentos e a atualização de estoque em lote, garantindo que o banco de dados nunca entre em um estado inconsistente caso ocorra uma falha no meio da operação.
+5. **Processamento Assíncrono (Background Jobs):** Em e-commerces, o travamento de estoque por carrinhos abandonados é um problema crítico. Para resolver isso sem sobrecarregar a thread principal, integrei o Upstash para enfileirar tarefas (Message Queuing). Quando um pedido é criado, uma mensagem com *delay* de 15 minutos é despachada; caso o webhook do Mercado Pago não tenha confirmado o pagamento nesse período, o worker entra em ação e estorna os produtos para o banco de forma silenciosa e eficiente.
 
 --- 
 
