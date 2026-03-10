@@ -1,12 +1,13 @@
 "use client"
 
 import { SyntheticEvent, useRef, useState } from "react";
-import { ChevronDown, Image as ImageIcon, Star, Trash2, X } from "lucide-react";
+import { ChevronDown, Download, Image as ImageIcon, Loader2, Star, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { OrderStatus, Size } from "@/app/generated/prisma";
 import PasswordModal from "../../modals/PasswordModal";
 import { uploadImage } from "@/app/lib/upload-image";
 import { deleteReview, publishProductReview, Review } from "@/app/actions/review";
+import { getOrderReceiptToken } from "@/app/actions/receipt";
 
 type OrderItem = {
     id: number;
@@ -144,6 +145,23 @@ export function OrderCard({ order, reviewedProductIds }: { order: OrderProp, rev
     }
     };
 
+    const [isDownloading, setIsDownloading] = useState(false);
+    const handleDownloadReceipt = async () => {
+        setIsDownloading(true);
+        try {
+            const response = await getOrderReceiptToken(order.id);
+            
+            if (response.success && response.token) {
+                window.open(`/api/receipt?token=${response.token}`, '_blank');
+            }
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Erro ao baixar recibo";
+            alert(errorMessage);
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     return (
         <div className="bg-[#E5E5E5] rounded-xl overflow-hidden text-black transition-all duration-300">
             <button 
@@ -203,6 +221,15 @@ export function OrderCard({ order, reviewedProductIds }: { order: OrderProp, rev
                                             (Total: R$ {(item.unit_price * item.quantity).toFixed(2).replace('.', ',')})
                                         </span>
                                     </div>
+
+                                    <button 
+                                        onClick={handleDownloadReceipt}
+                                        disabled={isDownloading}
+                                        className="ml-auto mt-2 sm:mt-0 flex items-center justify-center gap-1.5 bg-white hover:bg-gray-200 text-black font-bold py-2 px-4 rounded-lg text-sm transition-colors shadow-sm whitespace-nowrap disabled:opacity-50"
+                                    >
+                                        {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                                        {isDownloading ? "Gerando..." : "Baixar Recibo"}
+                                    </button>
 
                                     {(order.status === 'PAID' || order.status === 'SHIPPED') && (
                                         hasReviewed ? (
