@@ -14,6 +14,7 @@ O projeto utiliza uma stack robusta e 100% tipada (End-to-End Type Safety), gara
 * **Linguagem:** [TypeScript](https://www.typescriptlang.org/) - Tipagem estrita desde o banco de dados até a interface.
 * **Banco de Dados & ORM:** [PostgreSQL] + [Prisma ORM](https://www.prisma.io/) - Relacionamentos complexos e queries transacionais.
 * **Gerenciamento de Estado:** [TanStack Query](https://tanstack.com/query) - Cache inteligente, mutações assíncronas e sincronização de dados do servidor.
+* **Background Jobs & Filas:** [Upstash (QStash/Redis)](https://upstash.com/) - Agendamento de filas de mensagens (cronjobs) para cancelamento assíncrono de pedidos e liberação de estoque.
 * **Armazenamento de Mídia:** [Cloudinary](https://cloudinary.com/) - Upload, otimização e entrega de imagens em nuvem (CDN).
 * **Estilização:** [Tailwind CSS](https://tailwindcss.com/) - UI responsiva, escalável e design system consistente.
 * **Autenticação:** [NextAuth.js](https://next-auth.js.org/) - Gestão de sessões seguras e controle de acesso baseado em roles (RBAC).
@@ -43,6 +44,7 @@ O projeto utiliza uma stack robusta e 100% tipada (End-to-End Type Safety), gara
 - **Checkout Otimizado (Frictionless):** - Fluxo em 3 etapas com validação de formulários em tempo real.
   - Funcionalidade "One-Click Buy" utilizando dados de cobrança e tokens de cartões previamente salvos de forma segura.
   - **Reserva Transacional de Estoque:** Bloqueio de itens no banco de dados durante a finalização da compra para evitar *overselling* (venda de itens esgotados).
+  - **Reserva e Expiração de Estoque:** Bloqueio de itens no momento da compra com cronômetro de 15 minutos. Caso o pagamento (PIX/Cartão) não seja confirmado, um *background job* via Upstash cancela o pedido e devolve os itens ao estoque automaticamente, prevenindo travamento de inventário.
 - **Self-Service do Cliente:** Painel privado para acompanhamento de pedidos, gestão de dados sensíveis e sistema integrado de avaliações e reviews de produtos.
 - **Segurança de Identidade:** Fluxos completos de recuperação de senha e verificação de e-mail utilizando tokens criptografados.
 
@@ -54,6 +56,7 @@ O projeto utiliza uma stack robusta e 100% tipada (End-to-End Type Safety), gara
 2. **Type Safety Estrito e Global:** Extensão de escopos globais (ex: tipagem de SDKs injetados na `Window`) e aproveitamento de tipos inferidos do banco de dados (`Prisma Payloads`) para garantir que o Front-end reflita perfeitamente o Back-end.
 3. **Otimização de Ciclo de Vida (React 18):** Controle rigoroso de efeitos colaterais e mutações de estado, utilizando `useRef` e `useCallback` para evitar renderizações em cascata (*cascading renders*) e condições de corrida (*race conditions*) em requisições de rede.
 4. **Resiliência de Banco de Dados:** Uso de transações (ACID) em operações críticas, como o processamento de pagamentos e a atualização de estoque em lote, garantindo que o banco de dados nunca entre em um estado inconsistente caso ocorra uma falha no meio da operação.
+5. **Processamento Assíncrono (Background Jobs):** Em e-commerces, o travamento de estoque por carrinhos abandonados é um problema crítico. Para resolver isso sem sobrecarregar a thread principal, integrei o Upstash para enfileirar tarefas (Message Queuing). Quando um pedido é criado, uma mensagem com *delay* de 15 minutos é despachada; caso o webhook do Mercado Pago não tenha confirmado o pagamento nesse período, o worker entra em ação e estorna os produtos para o banco de forma silenciosa e eficiente.
 
 --- 
 
