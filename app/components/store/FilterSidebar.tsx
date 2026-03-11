@@ -76,7 +76,7 @@ export function FilterSidebar({ categories }: FilterSidebarProps) {
       <div className="space-y-2">
         {/* GAVETA 1: CATEGORIAS */}
         <FilterDrawer title="Categorias" isOpenDefault={true}>
-          <div className="flex flex-col space-y-1">
+          <div className="flex flex-col space-y-1 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
             <Link 
               href={createFilterLink("category", null)}
               className={`text-sm py-1 px-2 rounded transition-colors ${!activeCategory ? 'bg-white/20 font-bold' : 'hover:bg-white/10 text-gray-100'}`}
